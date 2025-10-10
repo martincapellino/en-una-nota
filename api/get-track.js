@@ -75,6 +75,52 @@ const getAppToken = async () => {
     throw new Error(typeof lastError === 'string' ? lastError : JSON.stringify(lastError));
 };
 
+// Fallback: mapear playlistId a términos de búsqueda (género/keywords)
+const playlistIdToSearchQuery = {
+    '37i9dQZF1DXcBWIGoYBM5M': 'pop', // Today\'s Top Hits ~ pop mainstream
+    '37i9dQZF1DWXRqgorJj26U': 'rock', // Rock Classics
+    '37i9dQZF1DX10zKGVs6_cs': 'latin' // Viva Latino
+};
+
+async function fetchTracksViaSearch(token, searchTerm) {
+    const marketsToTry = ['US', 'AR', 'BR', undefined];
+    for (const market of marketsToTry) {
+        try {
+            const resp = await axios.get('https://api.spotify.com/v1/search', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                timeout: 10000,
+                params: {
+                    q: `genre:"${searchTerm}"`,
+                    type: 'track',
+                    limit: 50,
+                    market: market
+                }
+            });
+            const items = resp.data?.tracks?.items || [];
+            const playable = items.filter(t => t && t.preview_url);
+            if (playable.length > 0) return playable;
+        } catch (err) {
+            const status = err.response?.status;
+            const data = err.response?.data || err.message;
+            console.error('Search fallback failed', market || 'none', status, data);
+            if (status === 401 || status === 403) {
+                // caller maneja invalidación del token si corresponde
+                throw err;
+            }
+            if (status === 429) {
+                const waitMs = retryAfterMsFrom(err.response) || 500;
+                await sleep(waitMs);
+                continue;
+            }
+            if (typeof status === 'number' && status >= 500) {
+                await sleep(200);
+                continue;
+            }
+        }
+    }
+    return [];
+}
+
 // This is the main function that Vercel will run
 module.exports = async (req, res) => {
     // Method validation
@@ -124,7 +170,37 @@ module.exports = async (req, res) => {
             const st = plErr.response?.status;
             const dt = plErr.response?.data || plErr.message;
             console.error('Playlist existence check failed:', st, dt);
-            throw plErr; // superficie el 404 si la playlist realmente no existe/accessible
+            // Fallback a búsqueda si la playlist devuelve 404 con Client Credentials
+            if (st === 404) {
+                const term = playlistIdToSearchQuery[playlistId];
+                if (term) {
+                    console.log('Falling back to search with term:', term);
+                    // permitir un refresh de token si fuera necesario en el flujo del caller
+                    let currentToken = token;
+                    try {
+                        let tracks = await fetchTracksViaSearch(currentToken, term);
+                        if (!tracks.length) {
+                            // intento refresh token y reintentar búsqueda
+                            tokenCache = null;
+                            tokenExpiresAt = 0;
+                            currentToken = await getAppToken();
+                            tracks = await fetchTracksViaSearch(currentToken, term);
+                        }
+                        if (tracks.length) {
+                            const t = tracks[Math.floor(Math.random() * tracks.length)];
+                            return res.status(200).json({
+                                name: t.name,
+                                artist: t.artists.map(a => a.name).join(', '),
+                                preview_url: t.preview_url,
+                                album_art: t.album.images[0]?.url
+                            });
+                        }
+                    } catch (fbErr) {
+                        console.error('Search fallback hard failure:', fbErr.response?.data || fbErr.message);
+                    }
+                }
+            }
+            throw plErr; // si no hubo fallback exitoso, propagar
         }
         
         // **CORRECTION #2: This URL is now also correct.**
