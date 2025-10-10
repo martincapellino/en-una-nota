@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
 		const { access_token, refresh_token, expires_in, token_type } = tokenResp.data;
 		// Guardar refresh_token en cookie httpOnly para pruebas locales rápidas
 		if (refresh_token) {
-			res.setHeader('Set-Cookie', `spotify_refresh_token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
+			res.setHeader('Set-Cookie', `spotify_refresh_token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
 		}
 		// Redirigir al home para continuar el flujo UX
 		res.writeHead(302, { Location: '/' });
