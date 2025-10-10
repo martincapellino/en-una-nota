@@ -2,9 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- YOUR PLAYLIST CONFIGURATION ----
     // This is where you add the genres and their corresponding PUBLIC Spotify Playlist IDs.
     const genres = {
-        "Today's Top Hits Mundial": "37i9dQZF1DXcBWIGoYBM5M",
         "Quevedo y Cruzzi": "37i9dQZF1DWXRqgorJj26U",
-        "Reggaeton": "37i9dQZF1DX10zKGVs6_cs",
         "Dukoooo": "duki_essentials"
     };
 
@@ -403,6 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMenu();
     if (genresButton) genresButton.addEventListener('click', showGenreSelection);
 });
+
 
 
 
