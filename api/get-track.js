@@ -68,17 +68,17 @@ const getAppToken = async () => {
                 'https://accounts.spotify.com/api/token',
                 params.toString(),
                 {
-                    headers: {
+        headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
-                    },
+            'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        },
                     timeout: 10000,
                 }
             );
 
-            tokenCache = tokenResponse.data.access_token;
-            tokenExpiresAt = Date.now() + (tokenResponse.data.expires_in * 1000);
-            return tokenCache;
+    tokenCache = tokenResponse.data.access_token;
+    tokenExpiresAt = Date.now() + (tokenResponse.data.expires_in * 1000);
+    return tokenCache;
         } catch (error) {
             const status = error.response?.status;
             const data = error.response?.data;
@@ -203,10 +203,9 @@ module.exports = async (req, res) => {
     let userAccessToken = cookies['sp_access_token'];
     const userRefreshToken = cookies['sp_refresh_token'];
 
-    // Si no hay token de usuario, seguir con Client Credentials pero devolver 401 para que el cliente pueda redirigir a login
+    // Si no hay token de usuario, requerir autenticación
     if (!userAccessToken && !userRefreshToken) {
-        // seguimos con client credentials como último recurso, pero indicamos que se puede iniciar sesión
-        // return sendJsonError(res, 401, 'User authentication required for Spotify access.');
+        return sendJsonError(res, 401, 'User authentication required for Spotify access.');
     }
 
     try {
@@ -215,8 +214,14 @@ module.exports = async (req, res) => {
         if (userAccessToken) {
             bearer = `Bearer ${userAccessToken}`;
         } else {
-            const token = await getAppToken();
-            bearer = `Bearer ${token}`;
+            // No hay access token pero sí refresh: no consultamos con app token, refrescamos primero
+            try {
+                const refreshed = await refreshAccessToken(userRefreshToken);
+                userAccessToken = refreshed.access_token;
+                bearer = `Bearer ${userAccessToken}`;
+            } catch (e) {
+                return sendJsonError(res, 401, 'User authentication required for Spotify access.');
+            }
         }
         console.log('Fetching playlist tracks for playlistId:', playlistId);
         
@@ -230,7 +235,7 @@ module.exports = async (req, res) => {
         } catch (plErr) {
             const st = plErr.response?.status;
             const dt = plErr.response?.data || plErr.message;
-            // Si es 401 y tenemos refresh token, intentar refrescar y reintentar una vez
+            // Si es 401/403 y tenemos refresh token, intentar refrescar y reintentar una vez
             if ((st === 401 || st === 403) && userRefreshToken) {
                 try {
                     const refreshed = await refreshAccessToken(userRefreshToken);
@@ -243,10 +248,13 @@ module.exports = async (req, res) => {
                     });
                 } catch (rErr) {
                     console.error('Playlist check after refresh failed:', rErr.response?.data || rErr.message);
+                    return sendJsonError(res, 401, 'User authentication required for Spotify access.');
                 }
+            } else if (st === 401 || st === 403) {
+                return sendJsonError(res, 401, 'User authentication required for Spotify access.', dt);
             } else {
                 console.error('Playlist existence check failed:', st, dt);
-                // Fallback y resto de flujo continúan como antes (búsqueda/recomendaciones)
+                // Se continúa al fallback como antes (búsqueda/recomendaciones)
             }
             // Si igualmente no se pudo, se continúa al fallback como antes
         }
@@ -276,15 +284,18 @@ module.exports = async (req, res) => {
                     console.error(`Tracks fetch failed (attempt ${attempt}/${maxAttemptsTracks}, market=${market || 'none'})`, status, data || err.message);
 
                     // 401/403: invalidate token and retry con nuevo token (si tenemos refresh)
-                    if ((status === 401 || status === 403) && userRefreshToken) {
-                        try {
-                            const refreshed = await refreshAccessToken(userRefreshToken);
-                            userAccessToken = refreshed.access_token;
-                            currentToken = userAccessToken;
-                            continue;
-                        } catch (tokenErr) {
-                            throw tokenErr;
+                    if ((status === 401 || status === 403)) {
+                        if (userRefreshToken) {
+                            try {
+                                const refreshed = await refreshAccessToken(userRefreshToken);
+                                userAccessToken = refreshed.access_token;
+                                currentToken = userAccessToken;
+                                continue;
+                            } catch (tokenErr) {
+                                return sendJsonError(res, 401, 'User authentication required for Spotify access.');
+                            }
                         }
+                        return sendJsonError(res, 401, 'User authentication required for Spotify access.');
                     }
 
                     // 429: respetar Retry-After
