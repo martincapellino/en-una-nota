@@ -210,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
                 <button class="mode-button" id="my-playlists-button">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
+                <button class="back-button" id="logout-button">Cerrar sesión</button>
                 ` : ''}
             </div>
         `;
@@ -227,6 +228,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (myPlaylistsBtn) myPlaylistsBtn.addEventListener('click', () => {
             playSound('click');
             showMyPlaylists();
+        });
+        const logoutBtn = document.getElementById('logout-button');
+        if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+            playSound('click');
+            try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+            // resetear SDK/estado
+            try { if (spotifyPlayer) { await spotifyPlayer.disconnect(); } } catch (_) {}
+            spotifyPlayer = null; spotifyDeviceId = null; isSpotifyConnected = false; spotifyUser = null; renderUserBadge();
+            initializeMenu();
         });
         showScreen(menuContainer);
     }
