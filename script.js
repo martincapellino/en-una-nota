@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // This is where you add the genres and their corresponding PUBLIC Spotify Playlist IDs.
     const genres = {
         "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M",
-        "Rock Classics": "37i9dQZF1DWXRqgorJj26U",
+        "Las Palmas": "37i9dQZF1DWXRqgorJj26U",
         "Música Latina": "37i9dQZF1DX10zKGVs6_cs"
-        'duki_essentials': ['duki', 'trap argentino', 'hip hop argentino', 'reggaeton', 'bizarrap']  // ← AGREGAR ESTA LÍNEA
+        "Duki Essentials": "duki_essentials"
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -403,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMenu();
     if (genresButton) genresButton.addEventListener('click', showGenreSelection);
 });
+
 
 
 
