@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let playTimeout = null;
     let allTrackNames = []; // For the autocomplete suggestions
     let currentGenre = null; // Para recordar el género actual
+    let playerScore = 0; // Sistema de puntos
 
     // ---- NAVIGATION LOGIC ----
     const showScreen = (screen) => {
@@ -103,6 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAttempt = 0;
         
         gameContainer.innerHTML = `
+            <div class="score-container">
+                <p id="playerScore">Puntos: ${playerScore}</p>
+            </div>
             <div class="album-art-container">
                 <img id="albumArt" src="${currentTrack.album_art}" alt="Tapa del álbum borrosa">
             </div>
@@ -111,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="controls-area">
                 <button id="playBtn">▶</button>
-                <button id="skipBtn" title="Saltar 5 segundos">⏭️</button>
                 <span class="volume-icon">🔊</span>
                 <input type="range" id="volumeSlider" min="0" max="100" value="80">
             </div>
@@ -119,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN" autocomplete="off">
                 <div id="suggestions" class="suggestions-container"></div>
             </div>
+            <button id="skipBtn" class="skip-button">SKIP</button>
             <p id="feedback"></p>
             <audio id="audioPlayer" src="${currentTrack.preview_url}"></audio>
             <div class="game-buttons">
@@ -144,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(audioPlayer) audioPlayer.volume = volumeSlider.value / 100;
 
         playBtn.addEventListener('click', () => togglePlayPause(audioPlayer));
-        skipBtn.addEventListener('click', () => skipForward(audioPlayer));
+        skipBtn.addEventListener('click', () => handleSkip());
         volumeSlider.addEventListener('input', (e) => { if(audioPlayer) audioPlayer.volume = e.target.value / 100 });
         
         // Autocompletado inteligente
@@ -185,9 +189,13 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(playTimeout);
         const playBtn = document.getElementById('playBtn');
         if (audioPlayer.paused) {
-            // SIEMPRE desde el segundo 0
+            // Forzar inicio desde 0 segundos
             audioPlayer.currentTime = 0;
-            audioPlayer.play().catch(e => console.error("Error playing audio:", e));
+            // Esperar un momento para asegurar que se cargue desde 0
+            setTimeout(() => {
+                audioPlayer.currentTime = 0;
+                audioPlayer.play().catch(e => console.error("Error playing audio:", e));
+            }, 100);
             playBtn.textContent = '❚❚';
 
             const duration = trackDurations[currentAttempt] || trackDurations[trackDurations.length - 1];
@@ -203,10 +211,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function skipForward(audioPlayer) {
-        if (audioPlayer && !audioPlayer.paused) {
-            // Saltar 5 segundos hacia adelante
-            audioPlayer.currentTime = Math.min(audioPlayer.currentTime + 5, audioPlayer.duration || 30);
+    function handleSkip() {
+        // Funciona como un intento fallido
+        const feedback = document.getElementById('feedback');
+        feedback.textContent = 'SKIP...';
+        feedback.className = 'incorrect';
+        
+        currentAttempt++;
+        if (currentAttempt >= trackDurations.length) {
+            endGame(false);
+        } else {
+            updateBlur();
+            const nextDuration = (trackDurations[currentAttempt] / 1000).toFixed(1);
+            document.getElementById('trackTimer').textContent = `${nextDuration}s`;
+            
+            // Limpiar input y sugerencias
+            document.getElementById('guessInput').value = '';
+            hideSuggestions();
         }
     }
 
@@ -221,7 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const isReverseMatch = normalizedGuess.includes(normalizedAnswer.split(' ')[0]) && normalizedAnswer.split(' ')[0].length >= 3;
 
         if (isExactMatch || isPartialMatch || isReverseMatch) {
-            endGame(true);
+            // Calcular puntos basado en el intento (menos intentos = más puntos)
+            const pointsEarned = (trackDurations.length - currentAttempt) * 10;
+            playerScore += pointsEarned;
+            endGame(true, pointsEarned);
         } else {
             feedback.textContent = 'INCORRECTO...';
             feedback.className = 'incorrect';
@@ -237,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hideSuggestions();
     }
     
-    function endGame(isCorrect) {
+    function endGame(isCorrect, pointsEarned = 0) {
         const feedback = document.getElementById('feedback');
         const giveUpButton = document.getElementById('give-up-button');
         const nextSongButton = document.getElementById('next-song-button');
@@ -246,12 +270,15 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(playTimeout);
 
         if (isCorrect) {
-            feedback.innerHTML = `¡CORRECTO!<br>"${currentTrack.name}" de ${currentTrack.artist}`;
+            feedback.innerHTML = `¡CORRECTO!<br>"${currentTrack.name}" de ${currentTrack.artist}<br>+${pointsEarned} puntos`;
             feedback.className = 'correct';
         } else {
             feedback.innerHTML = `Era:<br>"${currentTrack.name}" de ${currentTrack.artist}`;
             feedback.className = 'incorrect';
         }
+        
+        // Actualizar puntuación en pantalla
+        document.getElementById('playerScore').textContent = `Puntos: ${playerScore}`;
         
         document.getElementById('albumArt').style.filter = 'none';
         document.getElementById('guessInput').disabled = true;
