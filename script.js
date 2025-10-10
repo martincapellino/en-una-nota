@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M",
         "Rock Classics": "37i9dQZF1DWXRqgorJj26U",
         "Música Latina": "37i9dQZF1DX10zKGVs6_cs"
-        "Duki Essentials": "duki_essentials"
+        'duki_essentials': ['duki', 'trap argentino', 'hip hop argentino', 'reggaeton', 'bizarrap']  // ← AGREGAR ESTA LÍNEA
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -403,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMenu();
     if (genresButton) genresButton.addEventListener('click', showGenreSelection);
 });
+
 
 
 
