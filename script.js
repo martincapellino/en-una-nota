@@ -54,12 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const response = await fetch('/api/get-track', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ playlistId })
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ playlistId })
                 });
+
 
 
                 if (!response.ok) throw new Error('El mandadero no pudo obtener la canción');
@@ -182,5 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
         albumArt.style.filter = `blur(${blurLevels[currentAttempt]}px)`;
     }
 });
+
 
 
