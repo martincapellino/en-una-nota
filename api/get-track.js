@@ -75,14 +75,18 @@ async function fetchTracksFromSpotifyPlaylist(playlistId, token) {
         // A Web Playback SDK no le hace falta preview_url; necesitamos la URI
         const playableTracks = allItems
             .filter(item => item && item.track && item.track.type === 'track' && !item.track.is_local)
-            .map(item => ({
-                name: item.track.name,
-                artist: item.track.artists.map(a => a.name).join(', '),
-                uri: item.track.uri,
-                album_art: (item.track.album.images && item.track.album.images[0] && item.track.album.images[0].url)
-                    || (item.track.album.images && item.track.album.images[1] && item.track.album.images[1].url)
-                    || ''
-            }));
+            .map(item => {
+                const imgs = item.track.album.images || [];
+                // preferir 300px si existe
+                const byWidth = [...imgs].sort((a,b) => Math.abs(300-a.width) - Math.abs(300-b.width));
+                const art = byWidth[0]?.url || imgs[0]?.url || '';
+                return {
+                    name: item.track.name,
+                    artist: item.track.artists.map(a => a.name).join(', '),
+                    uri: item.track.uri,
+                    album_art: art
+                };
+            });
 
         return playableTracks;
     } catch (error) {
