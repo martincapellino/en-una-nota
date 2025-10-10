@@ -9,7 +9,12 @@ module.exports = (req, res) => {
 
 	const scope = [
 		'playlist-read-private',
-		'playlist-read-collaborative'
+		'playlist-read-collaborative',
+		'streaming',
+		'user-read-email',
+		'user-read-private',
+		'user-read-playback-state',
+		'user-modify-playback-state'
 	].join(' ');
 
 	const params = querystring.stringify({
