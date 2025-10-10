@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const me = await spotifyApi('GET', '/me');
             spotifyUser = {
+                id: me.id,
                 name: me.display_name || (me.id ?? 'Usuario'),
                 image: (me.images && me.images[0] && me.images[0].url) || ''
             };
@@ -636,8 +637,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ---- INITIALIZATION ----
     initializeMenu();
-    // Intentar autoconectar si ya hay sesión (cookie)
-    setTimeout(() => { if (!isSpotifyConnected) connectSpotify(); }, 1200);
+    // Intentar autoconectar si ya hay sesión (cookie) y precargar perfil
+    setTimeout(async () => {
+        try { await fetchSpotifyProfile(); } catch (_) {}
+        if (!isSpotifyConnected) connectSpotify();
+    }, 800);
     if (genresButton) genresButton.addEventListener('click', () => {
         playSound('click');
         showGenreSelection();
