@@ -127,8 +127,6 @@ button:hover {
 .timer-container p { font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); font-weight: bold; height: 30px; }
 .controls-area { display: flex; align-items: center; justify-content: center; width: 100%; gap: 15px; }
 #playBtn { background: none; color: white; font-size: 2.5rem; width: 50px; text-align: center; padding: 0; }
-#skipBtn { background: none; color: white; font-size: 1.8rem; width: 50px; text-align: center; padding: 0; border: 2px solid #1DB954; border-radius: 50%; }
-#skipBtn:hover { background-color: #1DB954; transform: scale(1.1); }
 .volume-icon { font-size: 1.5rem; }
 #volumeSlider { -webkit-appearance: none; appearance: none; width: 60%; max-width: 200px; height: 4px; background: #555; border-radius: 5px; outline: none; cursor: pointer; }
 #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: white; border-radius: 50%; }
@@ -171,6 +169,43 @@ button:hover {
 
 .suggestion-item:last-child {
     border-bottom: none;
+}
+
+/* --- Score --- */
+.score-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 2px solid #1DB954;
+}
+
+#playerScore {
+    color: #1DB954;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* --- Skip Button --- */
+.skip-button {
+    background: #F44336;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 25px;
+    margin: 15px 0;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.skip-button:hover {
+    background: #d32f2f;
+    transform: scale(1.05);
 }
 
 /* --- Game Buttons --- */
