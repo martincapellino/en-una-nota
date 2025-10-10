@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>En Una Nota</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Pantalla de Menú Principal -->
+    <div id="menu-container" class="screen active">
+        <h1>EN UNA NOTA</h1>
+        <div class="modes-container">
+            <button class="mode-button disabled">DESAFÍO DIARIO</button>
+            <button class="mode-button disabled">MIS PLAYLISTS</button>
+            <button class="mode-button" id="genres-button">GÉNEROS MUSICALES</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Selección de Género -->
+    <div id="genre-selection-container" class="screen">
+        <h2>ELEGÍ UN GÉNERO</h2>
+        <div id="genre-buttons">
+            <!-- Los botones de género se crearán acá con JavaScript -->
+        </div>
+        <button class="back-button" id="back-to-menu-button">Volver</button>
+    </div>
+
+    <!-- Pantalla del Juego -->
+    <div id="game-container" class="screen">
+        <!-- Esta interfaz se generará con JavaScript cuando tengamos una canción -->
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
