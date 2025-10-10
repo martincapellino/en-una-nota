@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allTrackNames = []; // For the autocomplete suggestions
     let currentGenre = null; // Para recordar el género actual
     let playerScore = 0; // Sistema de puntos
+    let currentSection = 'genres'; // Para recordar de dónde viene: 'genres' o 'myplaylists'
 
     // ---- SPOTIFY WEB PLAYBACK SDK ----
     let spotifyPlayer = null;
@@ -221,10 +222,12 @@ document.addEventListener('DOMContentLoaded', () => {
         menuContainer.innerHTML = `
             <h1>EN UNA NOTA</h1>
             <div class="modes-container">
+                ${!connected ? `
                 <button class="mode-button spotify-button" id="connect-spotify-button">
                     <span class="spotify-logo"></span>
                     Conectar con Spotify
                 </button>
+                ` : ''}
                 ${connected ? `
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
                 <button class="mode-button" id="my-playlists-button">MIS PLAYLISTS</button>
@@ -263,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showGenreSelection() {
+        currentSection = 'genres';
         let genreButtonsHTML = '';
         for (const [name, id] of Object.entries(genres)) {
             genreButtonsHTML += `<button class="genre-button" data-playlist-id="${id}">${name.toUpperCase()}</button>`;
@@ -283,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function showMyPlaylists() {
+        currentSection = 'myplaylists';
         // requiere sesión
         try {
             const playlists = await spotifyApi('GET', '/me/playlists?limit=50');
@@ -460,7 +465,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         backToGenresButton.addEventListener('click', () => {
             playSound('click');
-            showGenreSelection();
+            if (currentSection === 'myplaylists') {
+                showMyPlaylists();
+            } else {
+                showGenreSelection();
+            }
         });
     }
 
@@ -539,8 +548,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('albumArt').style.filter = 'none';
         document.getElementById('guessInput').disabled = true;
-        giveUpButton.textContent = 'Elegir Otro Género';
-        giveUpButton.onclick = showGenreSelection;
+        giveUpButton.textContent = currentSection === 'myplaylists' ? 'Elegir Otra Playlist' : 'Elegir Otro Género';
+        giveUpButton.onclick = currentSection === 'myplaylists' ? showMyPlaylists : showGenreSelection;
         nextSongButton.style.display = 'inline-block';
     }
 
