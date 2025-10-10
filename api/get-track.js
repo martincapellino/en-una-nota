@@ -72,13 +72,13 @@ async function fetchTracksFromSpotifyPlaylist(playlistId, token) {
             nextUrl = response.data.next || null;
         }
 
-        // Filtrar solo las canciones con preview y que no sean locales/episodios
+        // A Web Playback SDK no le hace falta preview_url; necesitamos la URI
         const playableTracks = allItems
-            .filter(item => item && item.track && item.track.type === 'track' && !item.track.is_local && item.track.preview_url)
+            .filter(item => item && item.track && item.track.type === 'track' && !item.track.is_local)
             .map(item => ({
                 name: item.track.name,
                 artist: item.track.artists.map(a => a.name).join(', '),
-                preview_url: item.track.preview_url,
+                uri: item.track.uri,
                 album_art: (item.track.album.images && item.track.album.images[0] && item.track.album.images[0].url)
                     || (item.track.album.images && item.track.album.images[1] && item.track.album.images[1].url)
                     || ''
@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
         const tracks = await fetchTracksFromSpotifyPlaylist(playlistId, token);
         
         if (!tracks.length) {
-            return sendJsonError(res, 404, 'No se encontraron canciones con preview en esta playlist');
+            return sendJsonError(res, 404, 'No se encontraron canciones reproducibles en esta playlist');
         }
         
         // 3. Seleccionar una canción aleatoria
