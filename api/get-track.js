@@ -113,61 +113,86 @@ module.exports = async (req, res) => {
         const token = await getAppToken();
         console.log('Fetching playlist tracks for playlistId:', playlistId);
         
+        // Verificar existencia básica de la playlist (ayuda a diferenciar 404 reales)
+        try {
+            await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                timeout: 10000,
+                params: { fields: 'id,name' }
+            });
+        } catch (plErr) {
+            const st = plErr.response?.status;
+            const dt = plErr.response?.data || plErr.message;
+            console.error('Playlist existence check failed:', st, dt);
+            throw plErr; // superficie el 404 si la playlist realmente no existe/accessible
+        }
+        
         // **CORRECTION #2: This URL is now also correct.**
         let currentToken = token;
         const maxAttemptsTracks = 3;
         let lastTracksError;
         let tracksResponse;
-        for (let attempt = 1; attempt <= maxAttemptsTracks; attempt++) {
-            try {
-                tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-                    headers: { 'Authorization': `Bearer ${currentToken}` },
-                    timeout: 10000,
-                });
-                break; // success
-            } catch (err) {
-                const status = err.response?.status;
-                const data = err.response?.data;
-                lastTracksError = data || err.message;
-                console.error(`Tracks fetch failed (attempt ${attempt}/${maxAttemptsTracks})`, status, data || err.message);
+        const marketsToTry = ['US', 'AR', 'BR', undefined];
+        for (let attempt = 1; attempt <= maxAttemptsTracks && !tracksResponse; attempt++) {
+            for (const market of marketsToTry) {
+                try {
+                    tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+                        headers: { 'Authorization': `Bearer ${currentToken}` },
+                        timeout: 10000,
+                        params: {
+                            market: market,
+                            fields: 'items(track(name,artists(name),preview_url,album(images)))'
+                        }
+                    });
+                    break; // success
+                } catch (err) {
+                    const status = err.response?.status;
+                    const data = err.response?.data;
+                    lastTracksError = data || err.message;
+                    console.error(`Tracks fetch failed (attempt ${attempt}/${maxAttemptsTracks}, market=${market || 'none'})`, status, data || err.message);
 
-                // 401/403: invalidate token and retry once with new token
-                if (status === 401 || status === 403) {
-                    tokenCache = null; // invalidate cached token
-                    tokenExpiresAt = 0;
-                    try {
-                        currentToken = await getAppToken();
-                        // do not count this as a full attempt; retry immediately
-                        continue;
-                    } catch (tokenErr) {
-                        throw tokenErr;
+                    // 401/403: invalidate token and retry con nuevo token
+                    if (status === 401 || status === 403) {
+                        tokenCache = null;
+                        tokenExpiresAt = 0;
+                        try {
+                            currentToken = await getAppToken();
+                            continue; // intentar de nuevo con nuevo token, misma vuelta
+                        } catch (tokenErr) {
+                            throw tokenErr;
+                        }
                     }
-                }
 
-                // 429: respect Retry-After header if present
-                if (status === 429) {
-                    const waitMs = retryAfterMsFrom(err.response) || 500 * attempt;
-                    await sleep(waitMs);
-                    continue;
-                }
+                    // 429: respetar Retry-After
+                    if (status === 429) {
+                        const waitMs = retryAfterMsFrom(err.response) || 500 * attempt;
+                        await sleep(waitMs);
+                        continue;
+                    }
 
-                // 5xx: exponential backoff
-                if (typeof status === 'number' && status >= 500) {
-                    const waitMs = 300 * attempt;
-                    await sleep(waitMs);
-                    continue;
-                }
+                    // 5xx: backoff
+                    if (typeof status === 'number' && status >= 500) {
+                        const waitMs = 300 * attempt;
+                        await sleep(waitMs);
+                        continue;
+                    }
 
-                // Other errors: do not retry
-                throw err;
+                    // 404 u otros: probar siguiente market; si ya probamos todos los markets en este intento, el for externo hará backoff
+                    // No lanzar aún; dejamos que el bucle de markets continúe
+                }
+            }
+
+            if (!tracksResponse) {
+                // pequeño backoff entre intentos completos (si 5xx o 404 persistente)
+                await sleep(200 * attempt);
             }
         }
         if (!tracksResponse) {
             throw new Error(typeof lastTracksError === 'string' ? lastTracksError : JSON.stringify(lastTracksError));
         }
 
-        const tracks = tracksResponse.data.items;
-        const playableTracks = tracks.filter(t => t.track && t.track.preview_url);
+        const items = tracksResponse.data.items || [];
+        const playableTracks = items.filter(t => t.track && t.track.preview_url);
 
         if (playableTracks.length === 0) {
             return res.status(404).json({ error: 'No playable tracks with a preview were found in this playlist.' });
