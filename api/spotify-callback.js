@@ -30,8 +30,12 @@ module.exports = async (req, res) => {
 		);
 
 		const { access_token, refresh_token, expires_in, token_type } = tokenResp.data;
+		// Guardar refresh_token en cookie httpOnly para pruebas locales rápidas
+		if (refresh_token) {
+			res.setHeader('Set-Cookie', `spotify_refresh_token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
+		}
 		return res.status(200).json({
-			message: 'Copia SPOTIFY_REFRESH_TOKEN y guárdalo en Vercel',
+			message: 'Autorizado. Guarda SPOTIFY_REFRESH_TOKEN en Vercel si quieres persistencia.',
 			refresh_token,
 			info: { token_type, expires_in }
 		});
