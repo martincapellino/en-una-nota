@@ -132,7 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchSpotifyProfile() {
         try {
+            console.log('🔍 Intentando cargar perfil de Spotify...');
             const me = await spotifyApi('GET', '/me');
+            console.log('✅ Perfil cargado:', me.display_name || me.id);
             spotifyUser = {
                 id: me.id,
                 name: me.display_name || (me.id ?? 'Usuario'),
@@ -142,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // refrescar menú para mostrar modos aun si el SDK no está listo
             initializeMenu();
         } catch (e) {
-            console.warn('No se pudo obtener perfil', e.message);
+            console.error('❌ Error cargando perfil:', e.message);
         }
     }
 
@@ -724,6 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get('token');
     if (tokenFromUrl) {
+        console.log('✅ Token recibido del callback, guardando en localStorage');
         localStorage.setItem('spotify_refresh_token', tokenFromUrl);
         // Limpiar URL sin recargar
         window.history.replaceState({}, document.title, window.location.pathname);
