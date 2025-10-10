@@ -24,6 +24,44 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentGenre = null; // Para recordar el género actual
     let playerScore = 0; // Sistema de puntos
 
+    // ---- SOUND EFFECTS ----
+    const playSound = (soundType) => {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        switch(soundType) {
+            case 'click':
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+                break;
+            case 'success':
+                oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(659, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(784, audioContext.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+                break;
+            case 'error':
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+                break;
+        }
+    };
+
     // ---- NAVIGATION LOGIC ----
     const showScreen = (screen) => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -42,7 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         const dynBtn = document.getElementById('genres-button-dynamic');
-        if (dynBtn) dynBtn.addEventListener('click', showGenreSelection);
+        if (dynBtn) dynBtn.addEventListener('click', () => {
+            playSound('click');
+            showGenreSelection();
+        });
         showScreen(menuContainer);
     }
 
@@ -58,13 +99,17 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="back-button" id="back-to-menu-button">Volver</button>
         `;
 
-        document.getElementById('back-to-menu-button').addEventListener('click', initializeMenu);
+        document.getElementById('back-to-menu-button').addEventListener('click', () => {
+            playSound('click');
+            initializeMenu();
+        });
         document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
         showScreen(genreSelectionContainer);
     }
     
     async function handleGenreClick(event) {
         if (event.target.classList.contains('genre-button')) {
+            playSound('click');
             const playlistId = event.target.dataset.playlistId;
             const playlistName = event.target.innerText;
             currentGenre = { playlistId, playlistName };
@@ -146,8 +191,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if(audioPlayer) audioPlayer.volume = volumeSlider.value / 100;
 
-        playBtn.addEventListener('click', () => togglePlayPause(audioPlayer));
-        skipBtn.addEventListener('click', () => handleSkip());
+        playBtn.addEventListener('click', () => {
+            playSound('click');
+            togglePlayPause(audioPlayer);
+        });
+        skipBtn.addEventListener('click', () => {
+            playSound('click');
+            handleSkip();
+        });
         volumeSlider.addEventListener('input', (e) => { if(audioPlayer) audioPlayer.volume = e.target.value / 100 });
         
         // Autocompletado inteligente
@@ -180,8 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        giveUpButton.addEventListener('click', giveUp);
-        nextSongButton.addEventListener('click', nextSong);
+        giveUpButton.addEventListener('click', () => {
+            playSound('click');
+            giveUp();
+        });
+        nextSongButton.addEventListener('click', () => {
+            playSound('click');
+            nextSong();
+        });
     }
 
     function togglePlayPause(audioPlayer) {
@@ -244,10 +301,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Calcular puntos basado en el intento (menos intentos = más puntos)
             const pointsEarned = (trackDurations.length - currentAttempt) * 10;
             playerScore += pointsEarned;
+            playSound('success');
             endGame(true, pointsEarned);
         } else {
             feedback.textContent = 'INCORRECTO...';
             feedback.className = 'incorrect';
+            playSound('error');
             currentAttempt++;
             if (currentAttempt >= trackDurations.length) {
                 endGame(false);
@@ -399,9 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ---- INITIALIZATION ----
     initializeMenu();
-    if (genresButton) genresButton.addEventListener('click', showGenreSelection);
+    if (genresButton) genresButton.addEventListener('click', () => {
+        playSound('click');
+        showGenreSelection();
+    });
 });
-
 
 
 
