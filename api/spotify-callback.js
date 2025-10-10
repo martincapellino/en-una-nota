@@ -34,11 +34,9 @@ module.exports = async (req, res) => {
 		if (refresh_token) {
 			res.setHeader('Set-Cookie', `spotify_refresh_token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
 		}
-		return res.status(200).json({
-			message: 'Autorizado. Guarda SPOTIFY_REFRESH_TOKEN en Vercel si quieres persistencia.',
-			refresh_token,
-			info: { token_type, expires_in }
-		});
+		// Redirigir al home para continuar el flujo UX
+		res.writeHead(302, { Location: '/' });
+		return res.end();
 	} catch (err) {
 		const data = err.response?.data || err.message;
 		return res.status(500).json({ error: 'No se pudo intercambiar el code', details: data });
