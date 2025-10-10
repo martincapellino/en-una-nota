@@ -10,24 +10,43 @@ function sendJsonError(res, statusCode, message, extra) {
     return res.status(statusCode).json(payload);
 }
 
-// Obtener token de acceso de Spotify
+// Obtener token de acceso de Spotify (prefiere refresh token si existe)
 async function getSpotifyToken() {
     try {
         if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
             throw new Error('Faltan variables de entorno SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET');
         }
-        const response = await axios.post(
-            'https://accounts.spotify.com/api/token',
-            'grant_type=client_credentials',
-            {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64')
-                },
-                timeout: 10000
-            }
-        );
-        return response.data.access_token;
+        const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
+        let tokenResp;
+        if (refreshToken) {
+            tokenResp = await axios.post(
+                'https://accounts.spotify.com/api/token',
+                new URLSearchParams({
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshToken
+                }).toString(),
+                {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64')
+                    },
+                    timeout: 10000
+                }
+            );
+        } else {
+            tokenResp = await axios.post(
+                'https://accounts.spotify.com/api/token',
+                'grant_type=client_credentials',
+                {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64')
+                    },
+                    timeout: 10000
+                }
+            );
+        }
+        return tokenResp.data.access_token;
     } catch (error) {
         console.error('Error obteniendo token de Spotify:', error.message);
         throw new Error('No se pudo autenticar con Spotify');
