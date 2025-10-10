@@ -168,6 +168,35 @@ async function fetchTracksViaRecommendations(token, genres) {
     return [];
 }
 
+async function fetchTracksViaItunes(searchTerms) {
+    // iTunes Search API: https://itunes.apple.com/search?term=pop&entity=song&limit=50
+    // No requiere auth. Devuelve previewUrl y artworkUrl100.
+    const terms = searchTerms.length ? searchTerms : ['pop','rock','latin'];
+    for (const term of terms) {
+        try {
+            const resp = await axios.get('https://itunes.apple.com/search', {
+                timeout: 10000,
+                params: {
+                    term: term,
+                    entity: 'song',
+                    limit: 50
+                }
+            });
+            const items = resp.data?.results || [];
+            const playable = items.filter(t => t && t.previewUrl);
+            if (playable.length > 0) return playable.map(t => ({
+                name: t.trackName,
+                artists: [{ name: t.artistName }],
+                preview_url: t.previewUrl,
+                album: { images: [{ url: t.artworkUrl100 }] }
+            }));
+        } catch (err) {
+            console.error('iTunes fallback failed', term, err.message);
+        }
+    }
+    return [];
+}
+
 // This is the main function that Vercel will run
 module.exports = async (req, res) => {
     // Method validation
@@ -265,6 +294,18 @@ module.exports = async (req, res) => {
         }
 
         if (!tracks.length) {
+            // Último recurso: iTunes
+            const itunesTerms = terms.length ? terms : ['pop','rock','latin'];
+            const itunesTracks = await fetchTracksViaItunes(itunesTerms);
+            if (itunesTracks.length) {
+                const t = itunesTracks[Math.floor(Math.random() * itunesTracks.length)];
+                return res.status(200).json({
+                    name: t.name,
+                    artist: t.artists.map(a => a.name).join(', '),
+                    preview_url: t.preview_url,
+                    album_art: (t.album?.images?.[0]?.url) || ''
+                });
+            }
             return sendJsonError(res, 404, 'No playable tracks found via search/recommendations.');
         }
 
