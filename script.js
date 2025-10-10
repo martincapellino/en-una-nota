@@ -2,10 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- YOUR PLAYLIST CONFIGURATION ----
     // This is where you add the genres and their corresponding PUBLIC Spotify Playlist IDs.
     const genres = {
-        "Rock Nacional": "14eFRoqvr5mI7WiPYnuyj2",
-        "Trap Argentino": "6Tg2MWl06n0zvqI2x6kMLS",
-        "Kanye West": "2zrhcmJCJ0xPvhzSFArrQy"
-        // Add any other PUBLIC playlists you want here!
+        "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M",
+        "Rock Classics": "37i9dQZF1DWXRqgorJj26U",
+        "Viva Latino": "37i9dQZF1DX10zKGVs6_cs"
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -213,4 +212,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- INITIALIZATION ----
     initializeMenu();
 });
+
 
