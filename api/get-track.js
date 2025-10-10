@@ -1,41 +1,68 @@
 const axios = require('axios');
 
+// 🔑 CREDENCIALES DE SPOTIFY
+const SPOTIFY_CLIENT_ID = '703d482e19fb400788f84305b589d41d';
+const SPOTIFY_CLIENT_SECRET = '4716afe5dcde425c97e5737c7218f36b';
+
 function sendJsonError(res, statusCode, message, extra) {
     const payload = { error: message };
     if (extra) payload.details = extra;
     return res.status(statusCode).json(payload);
 }
 
-async function fetchTracksViaItunes(searchTerms) {
-    const terms = (Array.isArray(searchTerms) && searchTerms.length) ? searchTerms : ['pop','rock','latin'];
-    for (const term of terms) {
-        try {
-            const resp = await axios.get('https://itunes.apple.com/search', {
-                timeout: 10000,
-                params: { term, entity: 'song', limit: 50 }
-            });
-            const items = resp.data?.results || [];
-            const playable = items.filter(t => t && t.previewUrl);
-            if (playable.length > 0) {
-                return playable.map(t => ({
-                    name: t.trackName,
-                    artist: t.artistName,
-                    preview_url: t.previewUrl,
-                    album_art: t.artworkUrl100
-                }));
+// Obtener token de acceso de Spotify
+async function getSpotifyToken() {
+    try {
+        const response = await axios.post(
+            'https://accounts.spotify.com/api/token',
+            'grant_type=client_credentials',
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': 'Basic ' + Buffer.from(SPOTIFY_CLIENT_ID + ':' + SPOTIFY_CLIENT_SECRET).toString('base64')
+                },
+                timeout: 10000
             }
-        } catch (err) {
-            console.error('iTunes query failed', term, err.message);
-        }
+        );
+        return response.data.access_token;
+    } catch (error) {
+        console.error('Error obteniendo token de Spotify:', error.message);
+        throw new Error('No se pudo autenticar con Spotify');
     }
-    return [];
 }
 
-// Mapear los playlistId existentes a términos iTunes
-const playlistIdToItunesTerms = {
-    '37i9dQZF1DWXRqgorJj26U': ['quevedo', 'cruz cafune'],
-    'duki_essentials': ['duki', 'trap argentino', 'hip hop argentino', 'reggaeton', 'bizarrap']  // ← AGREGAR ESTA LÍNEA
-};
+// Obtener canciones de una playlist de Spotify
+async function fetchTracksFromSpotifyPlaylist(playlistId, token) {
+    try {
+        const response = await axios.get(
+            `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+            {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params: { limit: 100 }, // Obtener hasta 100 canciones
+                timeout: 10000
+            }
+        );
+
+        const items = response.data.items || [];
+        
+        // Filtrar solo las canciones que tienen preview_url disponible
+        const playableTracks = items
+            .filter(item => item.track && item.track.preview_url)
+            .map(item => ({
+                name: item.track.name,
+                artist: item.track.artists.map(a => a.name).join(', '),
+                preview_url: item.track.preview_url,
+                // Spotify tiene 3 tamaños: 640x640, 300x300, 64x64
+                // Usamos la imagen más grande disponible
+                album_art: item.track.album.images[0]?.url || item.track.album.images[1]?.url || ''
+            }));
+
+        return playableTracks;
+    } catch (error) {
+        console.error('Error obteniendo playlist de Spotify:', error.message);
+        throw new Error('No se pudo obtener la playlist de Spotify');
+    }
+}
 
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
@@ -54,20 +81,32 @@ module.exports = async (req, res) => {
     playlistId = playlistId.trim();
 
     try {
-        const terms = playlistIdToItunesTerms[playlistId] || [];
-        const tracks = await fetchTracksViaItunes(terms);
+        // 1. Obtener token de Spotify
+        const token = await getSpotifyToken();
+        
+        // 2. Obtener canciones de la playlist
+        const tracks = await fetchTracksFromSpotifyPlaylist(playlistId, token);
+        
         if (!tracks.length) {
-            return sendJsonError(res, 404, 'No playable tracks found for the requested genre.');
+            return sendJsonError(res, 404, 'No se encontraron canciones con preview en esta playlist');
         }
-        const t = tracks[Math.floor(Math.random() * tracks.length)];
-        return res.status(200).json(t);
+        
+        // 3. Seleccionar una canción aleatoria
+        const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+        
+        return res.status(200).json(randomTrack);
+        
     } catch (error) {
         const data = error.response?.data || error.message;
-        console.error('Error in get-track function (iTunes):', data);
-        return sendJsonError(res, 500, 'The call to iTunes failed from the server function.', typeof data === 'string' ? data : JSON.stringify(data));
+        console.error('Error en get-track (Spotify):', data);
+        return sendJsonError(
+            res, 
+            500, 
+            'Error al obtener canción de Spotify', 
+            typeof data === 'string' ? data : JSON.stringify(data)
+        );
     }
 };
-
 
 
 
