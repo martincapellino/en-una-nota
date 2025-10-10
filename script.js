@@ -296,8 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // requiere sesión
         try {
             const playlists = await spotifyApi('GET', '/me/playlists?limit=50');
-            const owned = (playlists.items || []).filter(p => p.owner && (p.owner.id === (spotifyUser?.id || '')));
-            const list = owned.length ? owned : (playlists.items || []);
+            // Mostrar todas las playlists del usuario (propias y seguidas)
+            const list = playlists.items || [];
             const cards = list.map(p => {
                 const cover = (p.images && p.images[1] && p.images[1].url) || (p.images && p.images[0] && p.images[0].url) || '';
                 const tracksTotal = p.tracks?.total ?? '';
