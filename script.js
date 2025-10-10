@@ -129,12 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const existing = document.getElementById('user-badge');
         if (!spotifyUser) { if (existing) existing.remove(); return; }
         const html = `
-            <div id="user-badge" style="position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.5);padding:6px 10px;border-radius:20px;border:1px solid #1DB954;">
+            <div id="user-badge">
                 ${spotifyUser.image ? `<img src="${spotifyUser.image}" alt="pfp" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">` : ''}
                 <span style="font-weight:700;">Hola, ${spotifyUser.name}</span>
             </div>
         `;
-        if (existing) existing.outerHTML = html; else appContainer.insertAdjacentHTML('afterbegin', html);
+        if (existing) existing.outerHTML = html; else document.body.insertAdjacentHTML('afterbegin', html);
     }
 
     async function playSpotifyClip(uri, ms) {
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
                 ${connected ? `
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
-                <button class="mode-button disabled">MIS PLAYLISTS</button>
+                <button class="mode-button" id="my-playlists-button">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
                 ` : ''}
             </div>
@@ -222,6 +222,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (connectBtn) connectBtn.addEventListener('click', () => {
             playSound('click');
             connectSpotify();
+        });
+        const myPlaylistsBtn = document.getElementById('my-playlists-button');
+        if (myPlaylistsBtn) myPlaylistsBtn.addEventListener('click', () => {
+            playSound('click');
+            showMyPlaylists();
         });
         showScreen(menuContainer);
     }
@@ -244,6 +249,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
         showScreen(genreSelectionContainer);
+    }
+
+    async function showMyPlaylists() {
+        // requiere sesión
+        try {
+            const playlists = await spotifyApi('GET', '/me/playlists?limit=50');
+            const items = (playlists.items || []).filter(p => p.owner && p.owner.id && (p.owner.id === (spotifyUser?.id || '')) || p.owner.display_name === spotifyUser?.name);
+            const buttons = (items.length ? items : (playlists.items || [])).map(p => {
+                const cover = (p.images && p.images[1] && p.images[1].url) || (p.images && p.images[0] && p.images[0].url) || '';
+                return `<button class="genre-button" data-playlist-id="${p.id}">${p.name.toUpperCase()}</button>`;
+            }).join('');
+            genreSelectionContainer.innerHTML = `
+                <h2>MIS PLAYLISTS</h2>
+                <div id="genre-buttons">${buttons || '<p class="loading-text">No se encontraron playlists.</p>'}</div>
+                <button class="back-button" id="back-to-menu-button">Volver</button>
+            `;
+            document.getElementById('back-to-menu-button').addEventListener('click', () => {
+                playSound('click');
+                initializeMenu();
+            });
+            document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
+            showScreen(genreSelectionContainer);
+        } catch (e) {
+            console.error('Error obteniendo playlists', e);
+            alert('No se pudieron cargar tus playlists. Verificá la conexión con Spotify.');
+        }
     }
     
     async function handleGenreClick(event) {
