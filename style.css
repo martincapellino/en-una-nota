@@ -127,6 +127,8 @@ button:hover {
 .timer-container p { font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); font-weight: bold; height: 30px; }
 .controls-area { display: flex; align-items: center; justify-content: center; width: 100%; gap: 15px; }
 #playBtn { background: none; color: white; font-size: 2.5rem; width: 50px; text-align: center; padding: 0; }
+#skipBtn { background: none; color: white; font-size: 1.8rem; width: 50px; text-align: center; padding: 0; border: 2px solid #1DB954; border-radius: 50%; }
+#skipBtn:hover { background-color: #1DB954; transform: scale(1.1); }
 .volume-icon { font-size: 1.5rem; }
 #volumeSlider { -webkit-appearance: none; appearance: none; width: 60%; max-width: 200px; height: 4px; background: #555; border-radius: 5px; outline: none; cursor: pointer; }
 #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: white; border-radius: 50%; }
