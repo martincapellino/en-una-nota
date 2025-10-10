@@ -404,6 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAttempt = 0;
         
         gameContainer.innerHTML = `
+            <button class="back-arrow-button" id="back-from-game-button">← Volver</button>
             <div class="score-container">
                 <p id="playerScore">Puntos: ${playerScore}</p>
             </div>
@@ -444,6 +445,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const giveUpButton = document.getElementById('give-up-button');
         const nextSongButton = document.getElementById('next-song-button');
         const backToGenresButton = document.getElementById('back-to-genres-button');
+        const backFromGameButton = document.getElementById('back-from-game-button');
+        
+        if (backFromGameButton) {
+            backFromGameButton.addEventListener('click', () => {
+                playSound('click');
+                if (currentSection === 'myplaylists') {
+                    showMyPlaylists();
+                } else {
+                    showGenreSelection();
+                }
+            });
+        }
         
         playBtn.addEventListener('click', async () => {
             playSound('click');
