@@ -1,4 +1,4 @@
-/* --- Configuración General y Fuentes --- */
+/* --- General Setup & Fonts --- */
 * {
     margin: 0;
     padding: 0;
@@ -16,11 +16,17 @@ body {
     padding: 20px;
 }
 
+#app-container {
+    width: 100%;
+    max-width: 600px;
+}
+
 h1 {
-    font-size: 3.5rem;
+    font-size: clamp(2.5rem, 10vw, 4rem); /* Responsive font size */
     font-weight: 800;
     letter-spacing: 7px;
     margin-bottom: 60px;
+    text-align: center;
 }
 
 h2 {
@@ -41,11 +47,10 @@ button:hover {
     transform: scale(1.05);
 }
 
-/* --- Sistema de Pantallas --- */
+/* --- Screen System --- */
 .screen {
     display: none;
     width: 100%;
-    max-width: 600px;
     text-align: center;
     animation: fadeIn 0.5s ease-in-out;
 }
@@ -62,7 +67,7 @@ button:hover {
 }
 
 
-/* --- Pantalla de Menú y Géneros --- */
+/* --- Menu & Genre Screens --- */
 .modes-container, #genre-buttons {
     display: flex;
     flex-direction: column;
@@ -103,10 +108,14 @@ button:hover {
     border-color: white;
     color: white;
 }
+.loading-text {
+    font-size: 1.5rem;
+    color: #a7a7a7;
+}
 
 
-/* --- Pantalla del Juego --- */
-#game-container { gap: 25px; }
+/* --- Game Screen --- */
+#game-container { gap: 20px; }
 .album-art-container img {
     width: 300px;
     height: 300px;
@@ -115,17 +124,18 @@ button:hover {
     border: 3px solid #333;
     transition: filter 0.5s ease-in-out;
 }
-.timer-container p { font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); font-weight: bold; }
+.timer-container p { font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); font-weight: bold; height: 30px; }
 .controls-area { display: flex; align-items: center; justify-content: center; width: 100%; gap: 15px; }
-#playBtn { background: none; color: white; font-size: 2.5rem; width: 50px; text-align: center; }
+#playBtn { background: none; color: white; font-size: 2.5rem; width: 50px; text-align: center; padding: 0; }
 .volume-icon { font-size: 1.5rem; }
-#volumeSlider { -webkit-appearance: none; appearance: none; width: 60%; height: 4px; background: #555; border-radius: 5px; outline: none; cursor: pointer; }
+#volumeSlider { -webkit-appearance: none; appearance: none; width: 60%; max-width: 200px; height: 4px; background: #555; border-radius: 5px; outline: none; cursor: pointer; }
 #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: white; border-radius: 50%; }
 #volumeSlider::-moz-range-thumb { width: 18px; height: 18px; background: white; border-radius: 50%; border: none; }
-.input-area { width: 100%; }
+.input-area { width: 100%; max-width: 400px; }
 #guessInput { background: transparent; border: 2px solid white; color: white; padding: 15px; font-size: 1rem; width: 100%; text-align: center; border-radius: 8px; }
 #guessInput::placeholder { color: rgba(255, 255, 255, 0.7); }
-#feedback { font-size: 1.2rem; height: 25px; font-weight: bold; }
+#feedback { font-size: 1.2rem; height: 50px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
 .correct { color: #1DB954; }
 .incorrect { color: #F44336; }
 .hidden { display: none; }
+
