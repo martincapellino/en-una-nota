@@ -31,7 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let spotifyUser = null;
 
     async function getAccessToken() {
-        const resp = await fetch('/api/spotify-access-token', { method: 'GET' });
+        const headers = { 'Content-Type': 'application/json' };
+        const localToken = localStorage.getItem('spotify_refresh_token');
+        if (localToken) {
+            headers['X-Spotify-Refresh-Token'] = localToken;
+        }
+        const resp = await fetch('/api/spotify-access-token', { method: 'GET', headers });
         if (!resp.ok) throw new Error('No se pudo obtener access token');
         const data = await resp.json();
         return data.access_token;
@@ -42,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Limpiar sesión SOLO si el usuario lo pidió explícitamente (cambiar de cuenta)
             if (forceLogout) {
                 try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+                localStorage.removeItem('spotify_refresh_token');
             }
 
             // Verificar si hay sesión; si no, redirigir a login explícitamente
@@ -247,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (logoutBtn) logoutBtn.addEventListener('click', async () => {
             playSound('click');
             try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+            localStorage.removeItem('spotify_refresh_token');
             // resetear SDK/estado
             try { if (spotifyPlayer) { await spotifyPlayer.disconnect(); } } catch (_) {}
             spotifyPlayer = null; spotifyDeviceId = null; isSpotifyConnected = false; spotifyUser = null; renderUserBadge();
@@ -649,8 +656,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ---- INITIALIZATION ----
+    // Capturar token de URL si viene del callback (fallback si cookie falla)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    if (tokenFromUrl) {
+        localStorage.setItem('spotify_refresh_token', tokenFromUrl);
+        // Limpiar URL sin recargar
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
     initializeMenu();
-    // Precargar perfil si ya hay cookie; NO autoabrir login
+    // Precargar perfil si ya hay cookie o localStorage; NO autoabrir login
     setTimeout(async () => {
         try { await fetchSpotifyProfile(); } catch (_) {}
     }, 800);
