@@ -34,8 +34,8 @@ module.exports = async (req, res) => {
 		if (refresh_token) {
 			res.setHeader('Set-Cookie', `spotify_refresh_token=${refresh_token}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=31536000`);
 		}
-		// Redirigir al home para continuar el flujo UX
-		res.writeHead(302, { Location: '/' });
+		// Redirigir al home con el token en URL para fallback si cookie falla
+		res.writeHead(302, { Location: `/?token=${encodeURIComponent(refresh_token)}` });
 		return res.end();
 	} catch (err) {
 		const data = err.response?.data || err.message;
