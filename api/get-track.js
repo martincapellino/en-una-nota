@@ -23,6 +23,29 @@ function retryAfterMsFrom(response) {
     return null;
 }
 
+// Helper: read cookies from request header
+function readCookies(req) {
+    const header = req.headers['cookie'] || req.headers['Cookie'] || '';
+    return header.split(';').reduce((acc, part) => {
+        const [k, v] = part.split('=');
+        if (k && v) acc[k.trim()] = decodeURIComponent(v.trim());
+        return acc;
+    }, {});
+}
+
+async function refreshAccessToken(refreshToken) {
+    const params = new URLSearchParams();
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', refreshToken);
+    const resp = await axios.post('https://accounts.spotify.com/api/token', params.toString(), {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64'),
+        },
+    });
+    return resp.data;
+}
+
 // A small in-memory cache to reuse the app token
 let tokenCache = null;
 let tokenExpiresAt = 0;
@@ -174,79 +197,62 @@ module.exports = async (req, res) => {
         return sendJsonError(res, 400, 'Missing or invalid playlistId');
     }
     playlistId = playlistId.trim();
-    // (se quita validación estricta del formato; dejamos que Spotify responda si es inválido)
+
+    // Leer token de usuario si existe
+    const cookies = readCookies(req);
+    let userAccessToken = cookies['sp_access_token'];
+    const userRefreshToken = cookies['sp_refresh_token'];
+
+    // Si no hay token de usuario, seguir con Client Credentials pero devolver 401 para que el cliente pueda redirigir a login
+    if (!userAccessToken && !userRefreshToken) {
+        // seguimos con client credentials como último recurso, pero indicamos que se puede iniciar sesión
+        // return sendJsonError(res, 401, 'User authentication required for Spotify access.');
+    }
 
     try {
-        const token = await getAppToken();
+        // Preferir token de usuario si existe
+        let bearer = null;
+        if (userAccessToken) {
+            bearer = `Bearer ${userAccessToken}`;
+        } else {
+            const token = await getAppToken();
+            bearer = `Bearer ${token}`;
+        }
         console.log('Fetching playlist tracks for playlistId:', playlistId);
         
-        // Verificar existencia básica de la playlist (ayuda a diferenciar 404 reales)
+        // Verificar existencia básica de la playlist
         try {
             await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: { 'Authorization': bearer },
                 timeout: 10000,
                 params: { fields: 'id,name' }
             });
         } catch (plErr) {
             const st = plErr.response?.status;
             const dt = plErr.response?.data || plErr.message;
-            console.error('Playlist existence check failed:', st, dt);
-            // Fallback a búsqueda si la playlist devuelve 404 con Client Credentials
-            if (st === 404) {
-                const terms = playlistIdToSearchQuery[playlistId] || [];
-                if (terms.length) {
-                    console.log('Falling back to search with terms:', terms);
-                    // permitir un refresh de token si fuera necesario en el flujo del caller
-                    let currentToken = token;
-                    try {
-                        let tracks = await fetchTracksViaSearch(currentToken, terms);
-                        if (!tracks.length) {
-                            // intento refresh token y reintentar búsqueda
-                            tokenCache = null;
-                            tokenExpiresAt = 0;
-                            currentToken = await getAppToken();
-                            tracks = await fetchTracksViaSearch(currentToken, terms);
-                        }
-                        if (!tracks.length) {
-                            // último intento: recomendaciones por género
-                            const genreSeeds = terms.map(t => t.replace(/genre:\"|\"/g, ''));
-                            tracks = await fetchTracksViaRecommendations(currentToken, genreSeeds);
-                        }
-                        if (tracks.length) {
-                            const t = tracks[Math.floor(Math.random() * tracks.length)];
-                            return res.status(200).json({
-                                name: t.name,
-                                artist: t.artists.map(a => a.name).join(', '),
-                                preview_url: t.preview_url,
-                                album_art: (t.album?.images?.[0]?.url) || ''
-                            });
-                        } else {
-                            return sendJsonError(
-                                res,
-                                404,
-                                'No playable tracks found via playlist (404) nor via search/recommendations.',
-                                dt
-                            );
-                        }
-                    } catch (fbErr) {
-                        const s2 = fbErr.response?.status || 500;
-                        const d2 = fbErr.response?.data || fbErr.message;
-                        console.error('Search/recommendations fallback hard failure:', d2);
-                        return sendJsonError(
-                            res,
-                            s2,
-                            'Fallback to search/recommendations failed.',
-                            d2
-                        );
-                    }
+            // Si es 401 y tenemos refresh token, intentar refrescar y reintentar una vez
+            if ((st === 401 || st === 403) && userRefreshToken) {
+                try {
+                    const refreshed = await refreshAccessToken(userRefreshToken);
+                    userAccessToken = refreshed.access_token;
+                    bearer = `Bearer ${userAccessToken}`;
+                    await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+                        headers: { 'Authorization': bearer },
+                        timeout: 10000,
+                        params: { fields: 'id,name' }
+                    });
+                } catch (rErr) {
+                    console.error('Playlist check after refresh failed:', rErr.response?.data || rErr.message);
                 }
+            } else {
+                console.error('Playlist existence check failed:', st, dt);
+                // Fallback y resto de flujo continúan como antes (búsqueda/recomendaciones)
             }
-            // si no era 404 o no hubo términos, propagar error original
-            throw plErr;
+            // Si igualmente no se pudo, se continúa al fallback como antes
         }
         
         // **CORRECTION #2: This URL is now also correct.**
-        let currentToken = token;
+        let currentToken = bearer; // Use the bearer token from the user or app token
         const maxAttemptsTracks = 3;
         let lastTracksError;
         let tracksResponse;
@@ -255,7 +261,7 @@ module.exports = async (req, res) => {
             for (const market of marketsToTry) {
                 try {
                     tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-                        headers: { 'Authorization': `Bearer ${currentToken}` },
+                        headers: { 'Authorization': currentToken },
                         timeout: 10000,
                         params: {
                             market: market,
@@ -269,13 +275,13 @@ module.exports = async (req, res) => {
                     lastTracksError = data || err.message;
                     console.error(`Tracks fetch failed (attempt ${attempt}/${maxAttemptsTracks}, market=${market || 'none'})`, status, data || err.message);
 
-                    // 401/403: invalidate token and retry con nuevo token
-                    if (status === 401 || status === 403) {
-                        tokenCache = null;
-                        tokenExpiresAt = 0;
+                    // 401/403: invalidate token and retry con nuevo token (si tenemos refresh)
+                    if ((status === 401 || status === 403) && userRefreshToken) {
                         try {
-                            currentToken = await getAppToken();
-                            continue; // intentar de nuevo con nuevo token, misma vuelta
+                            const refreshed = await refreshAccessToken(userRefreshToken);
+                            userAccessToken = refreshed.access_token;
+                            currentToken = userAccessToken;
+                            continue;
                         } catch (tokenErr) {
                             throw tokenErr;
                         }
