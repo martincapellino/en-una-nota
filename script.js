@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ---- YOUR PLAYLIST CONFIGURATION ----
-    // This is where you add the genres and their corresponding PUBLIC Spotify Playlist IDs.
+    // ---- TUS PLAYLISTS DE SPOTIFY ----
+    // Aquí están tus playlists configuradas
     const genres = {
-        "Quevedo y Cruzzi": "37i9dQZF1DWXRqgorJj26U",
-        "Dukoooo": "duki_essentials"
+        "Kochi": "7v4y32dRRPqgENTN2T5xg1",
+        "En una Nota - TPL": "2kumFei7d5KRoI2fLFgu2G"
     };
 
     // ---- DOM ELEMENT REFERENCES ----
