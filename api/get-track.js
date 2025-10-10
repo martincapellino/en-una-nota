@@ -36,6 +36,7 @@ const playlistIdToItunesTerms = {
     '37i9dQZF1DXcBWIGoYBM5M': ['pop', 'dance pop', 'top hits'],
     '37i9dQZF1DWXRqgorJj26U': ['classic rock', 'rock', 'rock hits'],
     '37i9dQZF1DX10zKGVs6_cs': ['latin', 'reggaeton', 'latin pop']
+    'duki_essentials': ['duki', 'trap argentino', 'hip hop argentino', 'reggaeton', 'bizarrap']
 };
 
 module.exports = async (req, res) => {
@@ -68,4 +69,5 @@ module.exports = async (req, res) => {
         return sendJsonError(res, 500, 'The call to iTunes failed from the server function.', typeof data === 'string' ? data : JSON.stringify(data));
     }
 };
+
 
