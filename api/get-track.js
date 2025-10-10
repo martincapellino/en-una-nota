@@ -223,123 +223,57 @@ module.exports = async (req, res) => {
                 return sendJsonError(res, 401, 'User authentication required for Spotify access.');
             }
         }
-        console.log('Fetching playlist tracks for playlistId:', playlistId);
-        
-        // Verificar existencia básica de la playlist
-        try {
-            await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-                headers: { 'Authorization': bearer },
-                timeout: 10000,
-                params: { fields: 'id,name' }
-            });
-        } catch (plErr) {
-            const st = plErr.response?.status;
-            const dt = plErr.response?.data || plErr.message;
-            // Si es 401/403 y tenemos refresh token, intentar refrescar y reintentar una vez
-            if ((st === 401 || st === 403) && userRefreshToken) {
-                try {
+        console.log('Proceeding with search/recommendations flow for playlistId:', playlistId);
+
+        // Intentar vía búsqueda/recomendaciones directamente (evitar endpoint de playlists por 404)
+        let currentToken = userAccessToken;
+        const terms = playlistIdToSearchQuery[playlistId] || [];
+        let tracks = [];
+        if (terms.length) {
+            try {
+                tracks = await fetchTracksViaSearch(currentToken, terms);
+                if (!tracks.length && userRefreshToken) {
                     const refreshed = await refreshAccessToken(userRefreshToken);
-                    userAccessToken = refreshed.access_token;
-                    bearer = `Bearer ${userAccessToken}`;
-                    await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-                        headers: { 'Authorization': bearer },
-                        timeout: 10000,
-                        params: { fields: 'id,name' }
-                    });
-                } catch (rErr) {
-                    console.error('Playlist check after refresh failed:', rErr.response?.data || rErr.message);
+                    currentToken = refreshed.access_token;
+                    tracks = await fetchTracksViaSearch(currentToken, terms);
+                }
+            } catch (err) {
+                // si la búsqueda falla por 401/403 y no podemos refrescar, devolvemos 401
+                const st = err.response?.status;
+                if ((st === 401 || st === 403) && !userRefreshToken) {
                     return sendJsonError(res, 401, 'User authentication required for Spotify access.');
                 }
-            } else if (st === 401 || st === 403) {
-                return sendJsonError(res, 401, 'User authentication required for Spotify access.', dt);
-            } else {
-                console.error('Playlist existence check failed:', st, dt);
-                // Se continúa al fallback como antes (búsqueda/recomendaciones)
             }
-            // Si igualmente no se pudo, se continúa al fallback como antes
         }
-        
-        // **CORRECTION #2: This URL is now also correct.**
-        let currentToken = bearer; // Use the bearer token from the user or app token
-        const maxAttemptsTracks = 3;
-        let lastTracksError;
-        let tracksResponse;
-        const marketsToTry = ['US', 'AR', 'BR', undefined];
-        for (let attempt = 1; attempt <= maxAttemptsTracks && !tracksResponse; attempt++) {
-            for (const market of marketsToTry) {
-                try {
-                    tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-                        headers: { 'Authorization': currentToken },
-                        timeout: 10000,
-                        params: {
-                            market: market,
-                            fields: 'items(track(name,artists(name),preview_url,album(images)))'
-                        }
-                    });
-                    break; // success
-                } catch (err) {
-                    const status = err.response?.status;
-                    const data = err.response?.data;
-                    lastTracksError = data || err.message;
-                    console.error(`Tracks fetch failed (attempt ${attempt}/${maxAttemptsTracks}, market=${market || 'none'})`, status, data || err.message);
 
-                    // 401/403: invalidate token and retry con nuevo token (si tenemos refresh)
-                    if ((status === 401 || status === 403)) {
-                        if (userRefreshToken) {
-                            try {
-                                const refreshed = await refreshAccessToken(userRefreshToken);
-                                userAccessToken = refreshed.access_token;
-                                currentToken = userAccessToken;
-                                continue;
-                            } catch (tokenErr) {
-                                return sendJsonError(res, 401, 'User authentication required for Spotify access.');
-                            }
-                        }
-                        return sendJsonError(res, 401, 'User authentication required for Spotify access.');
-                    }
-
-                    // 429: respetar Retry-After
-                    if (status === 429) {
-                        const waitMs = retryAfterMsFrom(err.response) || 500 * attempt;
-                        await sleep(waitMs);
-                        continue;
-                    }
-
-                    // 5xx: backoff
-                    if (typeof status === 'number' && status >= 500) {
-                        const waitMs = 300 * attempt;
-                        await sleep(waitMs);
-                        continue;
-                    }
-
-                    // 404 u otros: probar siguiente market; si ya probamos todos los markets en este intento, el for externo hará backoff
-                    // No lanzar aún; dejamos que el bucle de markets continúe
+        if (!tracks.length) {
+            // recomendaciones con semillas por género
+            const genreSeeds = (terms.length ? terms.map(t => t.replace(/genre:\"|\"/g, '')) : ['pop','rock','latin']);
+            try {
+                tracks = await fetchTracksViaRecommendations(currentToken, genreSeeds);
+                if (!tracks.length && userRefreshToken) {
+                    const refreshed = await refreshAccessToken(userRefreshToken);
+                    currentToken = refreshed.access_token;
+                    tracks = await fetchTracksViaRecommendations(currentToken, genreSeeds);
+                }
+            } catch (err) {
+                const st = err.response?.status;
+                if ((st === 401 || st === 403) && !userRefreshToken) {
+                    return sendJsonError(res, 401, 'User authentication required for Spotify access.');
                 }
             }
-
-            if (!tracksResponse) {
-                // pequeño backoff entre intentos completos (si 5xx o 404 persistente)
-                await sleep(200 * attempt);
-            }
-        }
-        if (!tracksResponse) {
-            throw new Error(typeof lastTracksError === 'string' ? lastTracksError : JSON.stringify(lastTracksError));
         }
 
-        const items = tracksResponse.data.items || [];
-        const playableTracks = items.filter(t => t.track && t.track.preview_url);
-
-        if (playableTracks.length === 0) {
-            return res.status(404).json({ error: 'No playable tracks with a preview were found in this playlist.' });
+        if (!tracks.length) {
+            return sendJsonError(res, 404, 'No playable tracks found via search/recommendations.');
         }
-        
-        const randomTrack = playableTracks[Math.floor(Math.random() * playableTracks.length)].track;
 
+        const t = tracks[Math.floor(Math.random() * tracks.length)];
         return res.status(200).json({
-            name: randomTrack.name,
-            artist: randomTrack.artists.map(a => a.name).join(', '),
-            preview_url: randomTrack.preview_url,
-            album_art: randomTrack.album.images[0].url
+            name: t.name,
+            artist: t.artists.map(a => a.name).join(', '),
+            preview_url: t.preview_url,
+            album_art: (t.album?.images?.[0]?.url) || ''
         });
 
     } catch (error) {
