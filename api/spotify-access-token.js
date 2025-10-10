@@ -6,7 +6,8 @@ module.exports = async (req, res) => {
 	const cookieHeader = req.headers.cookie || '';
 	const match = cookieHeader.match(/spotify_refresh_token=([^;]+)/);
 	const cookieRefresh = match ? decodeURIComponent(match[1]) : undefined;
-	const refreshToken = cookieRefresh; // solo cookie por usuario
+	const headerRefresh = req.headers['x-spotify-refresh-token'];
+	const refreshToken = cookieRefresh || headerRefresh; // cookie o fallback de localStorage
 	if (!clientId || !clientSecret) return res.status(500).json({ error: 'Missing client credentials' });
 	if (!refreshToken) return res.status(401).json({ error: 'No session', action: 'login', login_url: '/api/spotify-login' });
 	try {
