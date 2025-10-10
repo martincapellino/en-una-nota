@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const genres = {
         "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M",
         "Rock Classics": "37i9dQZF1DWXRqgorJj26U",
-        "Latinoide": "37i9dQZF1DX10zKGVs6_cs"
+        "Viva Latino": "37i9dQZF1DX10zKGVs6_cs"
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="controls-area">
                 <button id="playBtn">▶</button>
+                <button id="skipBtn" title="Saltar 5 segundos">⏭️</button>
                 <span class="volume-icon">🔊</span>
                 <input type="range" id="volumeSlider" min="0" max="100" value="80">
             </div>
@@ -133,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupGameListeners() {
         const playBtn = document.getElementById('playBtn');
+        const skipBtn = document.getElementById('skipBtn');
         const volumeSlider = document.getElementById('volumeSlider');
         const guessInput = document.getElementById('guessInput');
         const giveUpButton = document.getElementById('give-up-button');
@@ -142,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(audioPlayer) audioPlayer.volume = volumeSlider.value / 100;
 
         playBtn.addEventListener('click', () => togglePlayPause(audioPlayer));
+        skipBtn.addEventListener('click', () => skipForward(audioPlayer));
         volumeSlider.addEventListener('input', (e) => { if(audioPlayer) audioPlayer.volume = e.target.value / 100 });
         
         // Autocompletado inteligente
@@ -182,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(playTimeout);
         const playBtn = document.getElementById('playBtn');
         if (audioPlayer.paused) {
-            audioPlayer.currentTime = 0; // SIEMPRE desde el inicio
+            // SIEMPRE desde el segundo 0
+            audioPlayer.currentTime = 0;
             audioPlayer.play().catch(e => console.error("Error playing audio:", e));
             playBtn.textContent = '❚❚';
 
@@ -196,6 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             audioPlayer.pause();
             playBtn.textContent = '▶';
+        }
+    }
+
+    function skipForward(audioPlayer) {
+        if (audioPlayer && !audioPlayer.paused) {
+            // Saltar 5 segundos hacia adelante
+            audioPlayer.currentTime = Math.min(audioPlayer.currentTime + 5, audioPlayer.duration || 30);
         }
     }
 
