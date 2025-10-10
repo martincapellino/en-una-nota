@@ -77,9 +77,9 @@ const getAppToken = async () => {
 
 // Fallback: mapear playlistId a términos de búsqueda (género/keywords)
 const playlistIdToSearchQuery = {
-    '37i9dQZF1DXcBWIGoYBM5M': ['genre:"pop"', 'pop', 'dance pop', 'top hits'],
-    '37i9dQZF1DWXRqgorJj26U': ['genre:"rock"', 'classic rock', 'rock'],
-    '37i9dQZF1DX10zKGVs6_cs': ['genre:"latin"', 'latin', 'reggaeton']
+    '37i9dQZF1DXcBWIGoYBM5M': ['genre:"pop"', 'pop', 'dance pop', 'top hits', 'tag:viral', 'tag:new'],
+    '37i9dQZF1DWXRqgorJj26U': ['genre:"rock"', 'classic rock', 'rock', 'rock hits'],
+    '37i9dQZF1DX10zKGVs6_cs': ['genre:"latin"', 'latin', 'reggaeton', 'latin pop']
 };
 
 async function fetchTracksViaSearch(token, searchTerms) {
@@ -115,7 +115,9 @@ async function fetchTracksViaSearch(token, searchTerms) {
 
 async function fetchTracksViaRecommendations(token, genres) {
     const marketsToTry = ['US', 'AR', 'BR', undefined];
-    for (const genre of genres) {
+    // usar valores por defecto si géneros vienen vacíos
+    const baseGenres = genres && genres.length ? genres : ['pop', 'rock', 'latin'];
+    for (const genre of baseGenres) {
         for (const market of marketsToTry) {
             try {
                 const resp = await axios.get('https://api.spotify.com/v1/recommendations', {
@@ -172,10 +174,7 @@ module.exports = async (req, res) => {
         return sendJsonError(res, 400, 'Missing or invalid playlistId');
     }
     playlistId = playlistId.trim();
-    // Simple sanity check for Spotify playlist id (base62-like). Many official lists start with 37i9...
-    if (!/^[A-Za-z0-9]{10,60}$/.test(playlistId)) {
-        return sendJsonError(res, 400, 'playlistId format looks invalid');
-    }
+    // (se quita validación estricta del formato; dejamos que Spotify responda si es inválido)
 
     try {
         const token = await getAppToken();
