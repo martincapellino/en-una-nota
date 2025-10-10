@@ -4,7 +4,8 @@ module.exports = async (req, res) => {
 	const clientId = process.env.SPOTIFY_CLIENT_ID;
 	const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 	const cookieHeader = req.headers.cookie || '';
-	const cookieRefresh = (cookieHeader.match(/spotify_refresh_token=([^;]+)/) || [])[1];
+	const match = cookieHeader.match(/spotify_refresh_token=([^;]+)/);
+	const cookieRefresh = match ? decodeURIComponent(match[1]) : undefined;
 	const refreshToken = cookieRefresh; // solo cookie por usuario
 	if (!clientId || !clientSecret) return res.status(500).json({ error: 'Missing client credentials' });
 	if (!refreshToken) return res.status(401).json({ error: 'No session', action: 'login', login_url: '/api/spotify-login' });
