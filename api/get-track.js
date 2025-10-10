@@ -99,13 +99,19 @@ module.exports = async (req, res) => {
     }
 
     // Body validation
-    const { playlistId } = req.body || {};
+    let { playlistId } = req.body || {};
     if (!playlistId || typeof playlistId !== 'string') {
         return sendJsonError(res, 400, 'Missing or invalid playlistId');
+    }
+    playlistId = playlistId.trim();
+    // Simple sanity check for Spotify playlist id (base62-like). Many official lists start with 37i9...
+    if (!/^[A-Za-z0-9]{10,60}$/.test(playlistId)) {
+        return sendJsonError(res, 400, 'playlistId format looks invalid');
     }
 
     try {
         const token = await getAppToken();
+        console.log('Fetching playlist tracks for playlistId:', playlistId);
         
         // **CORRECTION #2: This URL is now also correct.**
         let currentToken = token;
@@ -123,6 +129,7 @@ module.exports = async (req, res) => {
                 const status = err.response?.status;
                 const data = err.response?.data;
                 lastTracksError = data || err.message;
+                console.error(`Tracks fetch failed (attempt ${attempt}/${maxAttemptsTracks})`, status, data || err.message);
 
                 // 401/403: invalidate token and retry once with new token
                 if (status === 401 || status === 403) {
