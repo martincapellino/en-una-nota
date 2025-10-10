@@ -73,17 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/get-track', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
                     body: JSON.stringify({ playlistId })
                 });
 
                 if (!response.ok) {
                     let errorData = {};
                     try { errorData = await response.json(); } catch (_) { /* ignore parse error */ }
-                    if (response.status === 401) {
-                        window.location.href = '/api/login';
-                        return;
-                    }
                     const baseMsg = errorData?.error || 'Server function returned an error';
                     const details = errorData?.details ? (typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)) : '';
                     const composed = details ? `${baseMsg} | details: ${details}` : baseMsg;
