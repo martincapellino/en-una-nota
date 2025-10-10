@@ -1,11 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ---- TU CONFIGURACIÓN DE PLAYLISTS ----
     const genres = {
-        "Kanye West": "2zrhcmJCJ0xPvhzSFArrQy",
-        "Trap Argentino": "6Tg2MWl06n0zvqI2x6kMLS",
-        "Pop": "3Fg3EtEkHdRRIl076cObYr"
-        // ¡Agregá acá todas las que quieras!
-    };
+    "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M"
+    // Add more public playlist IDs here if you want
+};
 
     // ---- REFERENCIAS A ELEMENTOS DEL DOM ----
     const menuContainer = document.getElementById('menu-container');
@@ -180,3 +178,4 @@ document.addEventListener('DOMContentLoaded', () => {
         albumArt.style.filter = `blur(${blurLevels[currentAttempt]}px)`;
     }
 });
+
