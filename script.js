@@ -404,10 +404,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAttempt = 0;
         
         gameContainer.innerHTML = `
-            <button class="back-arrow-button" id="back-from-game-button">← Volver</button>
             <div class="score-container">
                 <p id="playerScore">Puntos: ${playerScore}</p>
             </div>
+            <button class="back-arrow-button" id="back-from-game-button">← Volver</button>
             <div class="album-art-container">
                 <img id="albumArt" src="${currentTrack.album_art}" alt="Tapa del álbum borrosa">
             </div>
