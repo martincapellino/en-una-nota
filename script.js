@@ -41,10 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return data.access_token;
     }
 
-    async function connectSpotify() {
+    async function connectSpotify(forceLogout = false) {
         try {
-            // Siempre limpiar sesión anterior para permitir cambiar de cuenta
-            try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+            // Limpiar sesión SOLO si el usuario lo pidió explícitamente (cambiar de cuenta)
+            if (forceLogout) {
+                try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+            }
 
             // Verificar SDK disponible
             if (!window.Spotify || !window.Spotify.Player) {
@@ -226,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const connectBtn = document.getElementById('connect-spotify-button');
         if (connectBtn) connectBtn.addEventListener('click', () => {
             playSound('click');
-            connectSpotify();
+            // Con clic manual permitimos cambiar de cuenta (limpia sesión)
+            connectSpotify(true);
         });
         const myPlaylistsBtn = document.getElementById('my-playlists-button');
         if (myPlaylistsBtn) myPlaylistsBtn.addEventListener('click', () => {
@@ -643,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Intentar autoconectar si ya hay sesión (cookie) y precargar perfil
     setTimeout(async () => {
         try { await fetchSpotifyProfile(); } catch (_) {}
-        if (!isSpotifyConnected) connectSpotify();
+        if (!isSpotifyConnected) connectSpotify(false);
     }, 800);
     if (genresButton) genresButton.addEventListener('click', () => {
         playSound('click');
