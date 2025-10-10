@@ -76,8 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Server function returned an error');
+                    let errorData = {};
+                    try { errorData = await response.json(); } catch (_) { /* ignore parse error */ }
+                    const baseMsg = errorData?.error || 'Server function returned an error';
+                    const details = errorData?.details ? (typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)) : '';
+                    const composed = details ? `${baseMsg} | details: ${details}` : baseMsg;
+                    throw new Error(composed);
                 }
                 
                 currentTrack = await response.json();
@@ -85,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error("Error fetching the track:", error);
-                alert(`Hubo un error al buscar la canción: ${error.message}. Por favor, intentá de nuevo.`);
+                alert(`Hubo un error al buscar la canción: ${error.message}`);
                 showGenreSelection(); 
             }
         }
