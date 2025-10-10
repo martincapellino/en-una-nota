@@ -49,7 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             if (spotifyPlayer) {
-                alert('Spotify ya está conectado');
+                // Si ya existe el player, solo aseguremos conexión o refresquemos UI
+                if (isSpotifyConnected && spotifyDeviceId) {
+                    initializeMenu();
+                    return;
+                }
+                try { await spotifyPlayer.connect(); } catch (_) {}
                 return;
             }
 
@@ -68,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (btn) { btn.textContent = 'Spotify Conectado'; btn.disabled = true; }
                 // cargar perfil
                 fetchSpotifyProfile().catch(() => {});
+                // refrescar menú para habilitar modos
+                initializeMenu();
             });
             spotifyPlayer.addListener('not_ready', () => {
                 isSpotifyConnected = false;
