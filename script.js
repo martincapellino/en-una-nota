@@ -668,7 +668,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMenu();
     // Precargar perfil si ya hay cookie o localStorage; NO autoabrir login
     setTimeout(async () => {
-        try { await fetchSpotifyProfile(); } catch (_) {}
+        try { 
+            await fetchSpotifyProfile(); 
+            // Si el perfil se cargó, inicializar SDK automáticamente
+            if (spotifyUser && !spotifyPlayer) {
+                await connectSpotify(false);
+            }
+        } catch (_) {}
     }, 800);
     if (genresButton) genresButton.addEventListener('click', () => {
         playSound('click');
