@@ -24,6 +24,94 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentGenre = null; // Para recordar el género actual
     let playerScore = 0; // Sistema de puntos
 
+    // ---- SPOTIFY WEB PLAYBACK SDK ----
+    let spotifyPlayer = null;
+    let spotifyDeviceId = null;
+    let isSpotifyConnected = false;
+
+    async function getAccessToken() {
+        const resp = await fetch('/api/spotify-access-token', { method: 'GET' });
+        if (!resp.ok) throw new Error('No se pudo obtener access token');
+        const data = await resp.json();
+        return data.access_token;
+    }
+
+    async function connectSpotify() {
+        try {
+            // Verificar SDK disponible
+            if (!window.Spotify || !window.Spotify.Player) {
+                alert('Cargando SDK de Spotify... intentá de nuevo en 1-2 segundos');
+                return;
+            }
+            if (spotifyPlayer) {
+                alert('Spotify ya está conectado');
+                return;
+            }
+
+            spotifyPlayer = new window.Spotify.Player({
+                name: 'En Una Nota',
+                getOAuthToken: async cb => {
+                    try { const token = await getAccessToken(); cb(token); } catch (_) { /* noop */ }
+                },
+                volume: 0.8
+            });
+
+            spotifyPlayer.addListener('ready', ({ device_id }) => {
+                spotifyDeviceId = device_id;
+                isSpotifyConnected = true;
+                const btn = document.getElementById('connect-spotify-button');
+                if (btn) { btn.textContent = 'Spotify Conectado'; btn.disabled = true; }
+            });
+            spotifyPlayer.addListener('not_ready', () => {
+                isSpotifyConnected = false;
+            });
+            spotifyPlayer.addListener('initialization_error', ({ message }) => console.error('init_error', message));
+            spotifyPlayer.addListener('authentication_error', ({ message }) => console.error('auth_error', message));
+            spotifyPlayer.addListener('account_error', ({ message }) => console.error('account_error', message));
+
+            await spotifyPlayer.connect();
+        } catch (e) {
+            console.error('Error conectando Spotify', e);
+            alert('No se pudo conectar con Spotify. Verificá que autorizaste la app.');
+        }
+    }
+
+    async function spotifyApi(method, path, body) {
+        const token = await getAccessToken();
+        const opts = { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } };
+        if (body) opts.body = JSON.stringify(body);
+        const resp = await fetch(`https://api.spotify.com/v1${path}`, opts);
+        if (!resp.ok) {
+            const txt = await resp.text();
+            throw new Error(`Spotify API ${method} ${path} -> ${resp.status}: ${txt}`);
+        }
+        return resp.status === 204 ? null : resp.json();
+    }
+
+    async function ensureActiveDevice() {
+        if (!spotifyDeviceId) throw new Error('Spotify no conectado');
+        try {
+            await spotifyApi('PUT', '/me/player', { device_ids: [spotifyDeviceId], play: false });
+        } catch (e) {
+            // puede fallar si ya está activo; ignorar suavemente
+            console.warn('transfer playback warn', e.message);
+        }
+    }
+
+    async function playSpotifyClip(uri, ms) {
+        clearTimeout(playTimeout);
+        await ensureActiveDevice();
+        // iniciar reproducción en el dispositivo del SDK
+        await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { uris: [uri], position_ms: 0 });
+        const playBtn = document.getElementById('playBtn');
+        if (playBtn) playBtn.textContent = '❚❚';
+        playTimeout = setTimeout(async () => {
+            try { await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); } catch (_) {}
+            const btn = document.getElementById('playBtn');
+            if (btn) btn.textContent = '▶';
+        }, ms);
+    }
+
     // ---- SOUND EFFECTS ----
     const playSound = (soundType) => {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -74,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         menuContainer.innerHTML = `
             <h1>EN UNA NOTA</h1>
             <div class="modes-container">
+                <button class="mode-button" id="connect-spotify-button">CONECTAR SPOTIFY</button>
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
                 <button class="mode-button disabled">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
@@ -83,6 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dynBtn) dynBtn.addEventListener('click', () => {
             playSound('click');
             showGenreSelection();
+        });
+        const connectBtn = document.getElementById('connect-spotify-button');
+        if (connectBtn) connectBtn.addEventListener('click', () => {
+            playSound('click');
+            connectSpotify();
         });
         showScreen(menuContainer);
     }
@@ -168,7 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <button id="skipBtn" class="skip-button">SKIP</button>
             <p id="feedback"></p>
-            <audio id="audioPlayer" src="${currentTrack.preview_url}"></audio>
             <div class="game-buttons">
                 <button class="back-button" id="next-song-button" style="display: none;">Siguiente Canción</button>
                 <button class="back-button" id="give-up-button">Me Rindo</button>
@@ -187,19 +280,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const guessInput = document.getElementById('guessInput');
         const giveUpButton = document.getElementById('give-up-button');
         const nextSongButton = document.getElementById('next-song-button');
-        const audioPlayer = document.getElementById('audioPlayer');
         
-        if(audioPlayer) audioPlayer.volume = volumeSlider.value / 100;
-
-        playBtn.addEventListener('click', () => {
+        playBtn.addEventListener('click', async () => {
             playSound('click');
-            togglePlayPause(audioPlayer);
+            if (!isSpotifyConnected || !spotifyDeviceId) {
+                alert('Primero conectá Spotify (botón en el menú).');
+                return;
+            }
+            const duration = trackDurations[currentAttempt] || trackDurations[trackDurations.length - 1];
+            try { await playSpotifyClip(currentTrack.uri, duration); } catch (e) { console.error(e); }
         });
         skipBtn.addEventListener('click', () => {
             playSound('click');
             handleSkip();
         });
-        volumeSlider.addEventListener('input', (e) => { if(audioPlayer) audioPlayer.volume = e.target.value / 100 });
+        volumeSlider.addEventListener('input', (e) => { if (spotifyPlayer && spotifyPlayer.setVolume) spotifyPlayer.setVolume(e.target.value / 100); });
         
         // Autocompletado inteligente
         guessInput.addEventListener('input', (e) => {
@@ -241,31 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function togglePlayPause(audioPlayer) {
-        clearTimeout(playTimeout);
-        const playBtn = document.getElementById('playBtn');
-        if (audioPlayer.paused) {
-            // Forzar inicio desde 0 segundos
-            audioPlayer.currentTime = 0;
-            // Esperar un momento para asegurar que se cargue desde 0
-            setTimeout(() => {
-                audioPlayer.currentTime = 0;
-                audioPlayer.play().catch(e => console.error("Error playing audio:", e));
-            }, 100);
-            playBtn.textContent = '❚❚';
-
-            const duration = trackDurations[currentAttempt] || trackDurations[trackDurations.length - 1];
-            playTimeout = setTimeout(() => {
-                if (audioPlayer && !audioPlayer.paused) {
-                    audioPlayer.pause();
-                    playBtn.textContent = '▶';
-                }
-            }, duration);
-        } else {
-            audioPlayer.pause();
-            playBtn.textContent = '▶';
-        }
-    }
+    // Reproducción ahora gestionada por Spotify Web Playback SDK
 
     function handleSkip() {
         // Funciona como un intento fallido
