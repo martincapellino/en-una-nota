@@ -27,9 +27,9 @@ body::before {
     width: 100%;
     height: 100%;
     background: 
-        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.18) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.18) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.12) 0%, transparent 50%);
     pointer-events: none;
     z-index: -1;
 }
@@ -68,7 +68,7 @@ h1 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: gradientShift 6s ease-in-out infinite;
+    animation: gradientShift 12s ease-in-out infinite;
     text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
 }
 
@@ -250,7 +250,7 @@ button:active {
     object-fit: cover;
     border-radius: 12px;
     border: 3px solid #333;
-    transition: filter 0.35s ease-in-out;
+    transition: filter 0.25s ease-in-out;
 }
 .timer-container p { font-size: 1.5rem; color: rgba(255, 255, 255, 0.8); font-weight: bold; height: 30px; }
 .controls-area { display: flex; align-items: center; justify-content: center; width: 100%; gap: 15px; }
@@ -343,6 +343,26 @@ button:active {
     justify-content: center;
     flex-wrap: wrap;
 }
+#my-playlists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 14px;
+    width: 100%;
+}
+
+.playlist-card {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.playlist-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 8px; }
+.playlist-title { font-weight: 700; font-size: 0.95rem; line-height: 1.2; }
+.playlist-meta { font-size: 0.85rem; color: rgba(255,255,255,0.75); }
 
 /* User badge fixed top-left */
 #user-badge {
