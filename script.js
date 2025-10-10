@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentGenre = null; // Para recordar el género actual
     let playerScore = 0; // Sistema de puntos
     let currentSection = 'genres'; // Para recordar de dónde viene: 'genres' o 'myplaylists'
+    let isLoadingPlaylists = false; // Evitar cargas múltiples
 
     // ---- SPOTIFY WEB PLAYBACK SDK ----
     let spotifyPlayer = null;
@@ -287,6 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function showMyPlaylists() {
+        if (isLoadingPlaylists) return;
+        isLoadingPlaylists = true;
         currentSection = 'myplaylists';
         // requiere sesión
         try {
@@ -315,9 +318,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 initializeMenu();
             });
             genreSelectionContainer.addEventListener('click', (e) => {
-                const t = e.target.closest('[data-playlist-id]');
-                if (t) {
-                    const fakeEvent = { target: { classList: { contains: (cls) => cls === 'genre-button' }, dataset: { playlistId: t.getAttribute('data-playlist-id') }, innerText: t.querySelector('.playlist-title')?.textContent || 'Mi playlist' } };
+                const btn = e.target.closest('.genre-button');
+                if (btn) {
+                    const card = btn.closest('[data-playlist-id]');
+                    const playlistName = card?.querySelector('.playlist-title')?.textContent || 'Mi playlist';
+                    const fakeEvent = { target: { classList: { contains: (cls) => cls === 'genre-button' }, dataset: { playlistId: btn.getAttribute('data-playlist-id') }, innerText: playlistName } };
                     handleGenreClick(fakeEvent);
                 }
             });
@@ -325,6 +330,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error('Error obteniendo playlists', e);
             alert('No se pudieron cargar tus playlists. Verificá la conexión con Spotify.');
+        } finally {
+            isLoadingPlaylists = false;
         }
     }
     
