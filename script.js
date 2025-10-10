@@ -1,85 +1,102 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ---- TU CONFIGURACIÓN DE PLAYLISTS ----
+    // ---- YOUR PLAYLIST CONFIGURATION ----
+    // This is where you add the genres and their corresponding PUBLIC Spotify Playlist IDs.
     const genres = {
-    "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M"
-    // Add more public playlist IDs here if you want
-};
+        "Rock Nacional": "14eFRoqvr5mI7WiPYnuyj2",
+        "Trap Argentino": "6Tg2MWl06n0zvqI2x6kMLS",
+        "Kanye West": "2zrhcmJCJ0xPvhzSFArrQy"
+        // Add any other PUBLIC playlists you want here!
+    };
 
-    // ---- REFERENCIAS A ELEMENTOS DEL DOM ----
+    // ---- DOM ELEMENT REFERENCES ----
+    const appContainer = document.getElementById('app-container');
     const menuContainer = document.getElementById('menu-container');
     const genreSelectionContainer = document.getElementById('genre-selection-container');
     const gameContainer = document.getElementById('game-container');
     
     const genresButton = document.getElementById('genres-button');
-    const genreButtonsContainer = document.getElementById('genre-buttons');
-    const backToMenuButton = document.getElementById('back-to-menu-button');
 
-    // ---- ESTADO DEL JUEGO ----
+    // ---- GAME STATE ----
     let currentTrack = null;
     let currentAttempt = 0;
     const trackDurations = [500, 2000, 5000]; // 0.5s, 2s, 5s
-    const blurLevels = [20, 10, 5, 0];
+    const blurLevels = [25, 15, 5, 0];
     let playTimeout = null;
-    let score = 0;
+    let allTrackNames = []; // For the autocomplete suggestions
 
-    // ---- FUNCIONES DE NAVEGACIÓN ----
+    // ---- NAVIGATION LOGIC ----
     const showScreen = (screen) => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         screen.classList.add('active');
     };
 
-    // ---- LÓGICA DE MENÚS ----
-    genresButton.addEventListener('click', () => {
-        genreButtonsContainer.innerHTML = '';
-        for (const [name, id] of Object.entries(genres)) {
-            const button = document.createElement('button');
-            button.className = 'genre-button';
-            button.innerText = name;
-            button.dataset.playlistId = id;
-            genreButtonsContainer.appendChild(button);
-        }
-        showScreen(genreSelectionContainer);
-    });
-
-    backToMenuButton.addEventListener('click', () => {
+    // ---- MENU & GENRE SELECTION LOGIC ----
+    function initializeMenu() {
+        // Build the main menu
+        menuContainer.innerHTML = `
+            <h1>EN UNA NOTA</h1>
+            <div class="modes-container">
+                <button class="mode-button disabled">DESAFÍO DIARIO</button>
+                <button class="mode-button disabled">MIS PLAYLISTS</button>
+                <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
+            </div>
+        `;
+        document.getElementById('genres-button-dynamic').addEventListener('click', showGenreSelection);
         showScreen(menuContainer);
-    });
+    }
 
-    genreButtonsContainer.addEventListener('click', async (event) => {
+    function showGenreSelection() {
+        let genreButtonsHTML = '';
+        for (const [name, id] of Object.entries(genres)) {
+            genreButtonsHTML += `<button class="genre-button" data-playlist-id="${id}">${name.toUpperCase()}</button>`;
+        }
+
+        genreSelectionContainer.innerHTML = `
+            <h2>ELEGÍ UN GÉNERO</h2>
+            <div id="genre-buttons">${genreButtonsHTML}</div>
+            <button class="back-button" id="back-to-menu-button">Volver</button>
+        `;
+
+        document.getElementById('back-to-menu-button').addEventListener('click', initializeMenu);
+        document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
+        showScreen(genreSelectionContainer);
+    }
+    
+    async function handleGenreClick(event) {
         if (event.target.classList.contains('genre-button')) {
             const playlistId = event.target.dataset.playlistId;
             const playlistName = event.target.innerText;
             
-            genreSelectionContainer.innerHTML = `<h2>Buscando una canción en "${playlistName}"...</h2>`;
+            genreSelectionContainer.innerHTML = `<h2 class="loading-text">Buscando una canción en "${playlistName}"...</h2>`;
 
             try {
                 const response = await fetch('/api/get-track', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ playlistId })
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playlistId })
                 });
 
-
-
-                if (!response.ok) throw new Error('El mandadero no pudo obtener la canción');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server function returned an error');
+                }
                 
                 currentTrack = await response.json();
                 startGame();
+
             } catch (error) {
-                console.error("Error al buscar la canción:", error);
-                alert("Hubo un error al buscar la canción. Por favor, intentá de nuevo.");
-                showScreen(menuContainer); 
+                console.error("Error fetching the track:", error);
+                alert(`Hubo un error al buscar la canción: ${error.message}. Por favor, intentá de nuevo.`);
+                showGenreSelection(); 
             }
         }
-    });
+    }
 
-    // ---- LÓGICA DEL JUEGO ----
+    // ---- GAME LOGIC ----
     function startGame() {
         currentAttempt = 0;
         
-        // Construimos la interfaz del juego dinámicamente
         gameContainer.innerHTML = `
-            <h2>¿QUÉ CANCIÓN ES?</h2>
             <div class="album-art-container">
                 <img id="albumArt" src="${currentTrack.album_art}" alt="Tapa del álbum borrosa">
             </div>
@@ -92,11 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="range" id="volumeSlider" min="0" max="100" value="80">
             </div>
             <div class="input-area">
-                <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN">
+                <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN" autocomplete="off">
             </div>
             <p id="feedback"></p>
             <audio id="audioPlayer" src="${currentTrack.preview_url}"></audio>
-            <button class="back-button" id="give-up-button">Me rindo</button>
+            <button class="back-button" id="give-up-button">Me Rindo</button>
         `;
 
         setupGameListeners();
@@ -111,10 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const giveUpButton = document.getElementById('give-up-button');
         const audioPlayer = document.getElementById('audioPlayer');
         
-        audioPlayer.volume = volumeSlider.value / 100;
+        if(audioPlayer) audioPlayer.volume = volumeSlider.value / 100;
 
         playBtn.addEventListener('click', () => togglePlayPause(audioPlayer));
-        volumeSlider.addEventListener('input', (e) => audioPlayer.volume = e.target.value / 100);
+        volumeSlider.addEventListener('input', (e) => { if(audioPlayer) audioPlayer.volume = e.target.value / 100 });
         guessInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') checkGuess(e.target.value);
         });
@@ -123,41 +140,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function togglePlayPause(audioPlayer) {
         clearTimeout(playTimeout);
+        const playBtn = document.getElementById('playBtn');
         if (audioPlayer.paused) {
             audioPlayer.currentTime = 0;
-            audioPlayer.play();
-            document.getElementById('playBtn').textContent = '❚❚';
+            audioPlayer.play().catch(e => console.error("Error playing audio:", e));
+            playBtn.textContent = '❚❚';
 
-            const duration = trackDurations[currentAttempt] || 5000;
+            const duration = trackDurations[currentAttempt] || trackDurations[trackDurations.length - 1];
             playTimeout = setTimeout(() => {
-                audioPlayer.pause();
-                document.getElementById('playBtn').textContent = '▶';
+                if (audioPlayer && !audioPlayer.paused) {
+                    audioPlayer.pause();
+                    playBtn.textContent = '▶';
+                }
             }, duration);
         } else {
             audioPlayer.pause();
-            document.getElementById('playBtn').textContent = '▶';
+            playBtn.textContent = '▶';
         }
     }
 
     function checkGuess(guess) {
         const feedback = document.getElementById('feedback');
-        // Comparamos el nombre de la canción sin importar mayúsculas/minúsculas o tildes
         const normalizedGuess = guess.trim().toLowerCase();
         const normalizedAnswer = currentTrack.name.toLowerCase();
 
         if (normalizedGuess === normalizedAnswer) {
-            feedback.textContent = `¡CORRECTO! Era "${currentTrack.name}" de ${currentTrack.artist}`;
-            feedback.className = 'correct';
-            document.getElementById('albumArt').style.filter = 'none';
-            document.getElementById('guessInput').disabled = true;
-            document.getElementById('give-up-button').textContent = 'Jugar de Nuevo';
-            document.getElementById('give-up-button').onclick = () => showScreen(genreSelectionContainer);
+            endGame(true);
         } else {
             feedback.textContent = 'INCORRECTO...';
             feedback.className = 'incorrect';
             currentAttempt++;
             if (currentAttempt >= trackDurations.length) {
-                giveUp();
+                endGame(false);
             } else {
                 updateBlur();
                 const nextDuration = (trackDurations[currentAttempt] / 1000).toFixed(1);
@@ -166,21 +180,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function giveUp() {
+    function endGame(isCorrect) {
         const feedback = document.getElementById('feedback');
-        feedback.textContent = `Era: "${currentTrack.name}" de ${currentTrack.artist}`;
-        feedback.className = 'incorrect';
+        const giveUpButton = document.getElementById('give-up-button');
+        const audioPlayer = document.getElementById('audioPlayer');
+        if(audioPlayer) audioPlayer.pause();
+        clearTimeout(playTimeout);
+
+        if (isCorrect) {
+            feedback.innerHTML = `¡CORRECTO!<br>"${currentTrack.name}" de ${currentTrack.artist}`;
+            feedback.className = 'correct';
+        } else {
+            feedback.innerHTML = `Era:<br>"${currentTrack.name}" de ${currentTrack.artist}`;
+            feedback.className = 'incorrect';
+        }
+        
         document.getElementById('albumArt').style.filter = 'none';
         document.getElementById('guessInput').disabled = true;
-        document.getElementById('give-up-button').textContent = 'Jugar de Nuevo';
-        document.getElementById('give-up-button').onclick = () => showScreen(genreSelectionContainer); // Reutilizamos el botón para volver
+        giveUpButton.textContent = 'Elegir Otro Género';
+        giveUpButton.onclick = showGenreSelection;
+    }
+
+    function giveUp() {
+        endGame(false);
     }
 
     function updateBlur() {
         const albumArt = document.getElementById('albumArt');
         albumArt.style.filter = `blur(${blurLevels[currentAttempt]}px)`;
     }
+    
+    // ---- INITIALIZATION ----
+    initializeMenu();
 });
-
-
 
