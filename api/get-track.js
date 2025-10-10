@@ -5,6 +5,13 @@ const axios = require('axios');
 const clientId = process.env.SPOTIFY_CLIENT_ID;
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
+// Small helper to send uniform JSON errors
+function sendJsonError(res, statusCode, message, extra) {
+    const payload = { error: message };
+    if (extra) payload.details = extra;
+    return res.status(statusCode).json(payload);
+}
+
 // A small in-memory cache to reuse the app token
 let tokenCache = null;
 let tokenExpiresAt = 0;
@@ -34,7 +41,32 @@ const getAppToken = async () => {
 
 // This is the main function that Vercel will run
 module.exports = async (req, res) => {
-    const { playlistId } = req.body;
+    // Method validation
+    if (req.method !== 'POST') {
+        return sendJsonError(res, 405, 'Method Not Allowed. Use POST.');
+    }
+
+    // Env validation
+    if (!clientId || !clientSecret) {
+        return sendJsonError(
+            res,
+            500,
+            'Spotify credentials are not configured on the server.',
+            'Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in your deployment environment.'
+        );
+    }
+
+    // Content-Type validation
+    const contentType = req.headers['content-type'] || req.headers['Content-Type'];
+    if (!contentType || !contentType.includes('application/json')) {
+        return sendJsonError(res, 400, 'Invalid Content-Type. Expected application/json');
+    }
+
+    // Body validation
+    const { playlistId } = req.body || {};
+    if (!playlistId || typeof playlistId !== 'string') {
+        return sendJsonError(res, 400, 'Missing or invalid playlistId');
+    }
 
     try {
         const token = await getAppToken();
@@ -61,8 +93,15 @@ module.exports = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error in get-track function:", error.response ? error.response.data : error.message);
-        return res.status(500).json({ error: 'The call to Spotify failed from the server function.' });
+        const status = error.response?.status || 500;
+        const data = error.response?.data || error.message;
+        console.error('Error in get-track function:', data);
+        return sendJsonError(
+            res,
+            status,
+            'The call to Spotify failed from the server function.',
+            typeof data === 'string' ? data : JSON.stringify(data)
+        );
     }
 };
 
