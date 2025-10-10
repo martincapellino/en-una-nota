@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
         const token = await getAppToken();
         
         // Pedimos las canciones de la playlist a Spotify
-        const tracksResponse = await axios.get(`developer.spotify.com/dashboard9`, {
+        const tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -65,3 +65,4 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: 'Falló la llamada a Spotify desde la función' });
     }
 };
+
