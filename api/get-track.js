@@ -33,9 +33,7 @@ async function fetchTracksViaItunes(searchTerms) {
 
 // Mapear los playlistId existentes a términos iTunes
 const playlistIdToItunesTerms = {
-    '37i9dQZF1DXcBWIGoYBM5M': ['pop', 'dance pop', 'top hits'],
     '37i9dQZF1DWXRqgorJj26U': ['quevedo', 'cruz cafune'],
-    '37i9dQZF1DX10zKGVs6_cs': ['pr', 'reggaeton', 'bad bunny', 'feid'],
     'duki_essentials': ['duki', 'trap argentino', 'hip hop argentino', 'reggaeton', 'bizarrap']  // ← AGREGAR ESTA LÍNEA
 };
 
@@ -69,6 +67,7 @@ module.exports = async (req, res) => {
         return sendJsonError(res, 500, 'The call to iTunes failed from the server function.', typeof data === 'string' ? data : JSON.stringify(data));
     }
 };
+
 
 
 
