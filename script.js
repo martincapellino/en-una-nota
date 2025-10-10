@@ -32,11 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function getAccessToken() {
         const resp = await fetch('/api/spotify-access-token', { method: 'GET' });
-        if (!resp.ok) {
-            // si no hay sesión, invitar a login
-            try { const data = await resp.json(); if (data?.action === 'login' && data?.login_url) window.location.href = data.login_url; } catch (_) {}
-            throw new Error('No se pudo obtener access token');
-        }
+        if (!resp.ok) throw new Error('No se pudo obtener access token');
         const data = await resp.json();
         return data.access_token;
     }
@@ -47,6 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (forceLogout) {
                 try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
             }
+
+            // Verificar si hay sesión; si no, redirigir a login explícitamente
+            try {
+                const check = await fetch('/api/spotify-access-token', { method: 'GET' });
+                if (check.status === 401) {
+                    window.location.href = '/api/spotify-login';
+                    return;
+                }
+            } catch (_) { /* ignore */ }
 
             // Verificar SDK disponible
             if (!window.Spotify || !window.Spotify.Player) {
@@ -643,10 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ---- INITIALIZATION ----
     initializeMenu();
-    // Intentar autoconectar si ya hay sesión (cookie) y precargar perfil
+    // Precargar perfil si ya hay cookie; NO autoabrir login
     setTimeout(async () => {
         try { await fetchSpotifyProfile(); } catch (_) {}
-        if (!isSpotifyConnected) connectSpotify(false);
     }, 800);
     if (genresButton) genresButton.addEventListener('click', () => {
         playSound('click');
