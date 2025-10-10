@@ -131,6 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 image: (me.images && me.images[0] && me.images[0].url) || ''
             };
             renderUserBadge();
+            // refrescar menú para mostrar modos aun si el SDK no está listo
+            initializeMenu();
         } catch (e) {
             console.warn('No se pudo obtener perfil', e.message);
         }
@@ -209,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- MENU & GENRE SELECTION LOGIC ----
     function initializeMenu() {
         // Build the main menu
-        const connected = isSpotifyConnected && spotifyDeviceId;
+        const connected = (!!spotifyUser) || (isSpotifyConnected && spotifyDeviceId);
         menuContainer.innerHTML = `
             <h1>EN UNA NOTA</h1>
             <div class="modes-container">
