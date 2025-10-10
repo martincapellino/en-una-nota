@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function connectSpotify() {
         try {
+            // Siempre limpiar sesión anterior para permitir cambiar de cuenta
+            try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+
             // Verificar SDK disponible
             if (!window.Spotify || !window.Spotify.Player) {
                 alert('Cargando SDK de Spotify... intentá de nuevo en 1-2 segundos');
