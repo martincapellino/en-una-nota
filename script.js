@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let spotifyPlayer = null;
     let spotifyDeviceId = null;
     let isSpotifyConnected = false;
+    let spotifyUser = null;
 
     async function getAccessToken() {
         const resp = await fetch('/api/spotify-access-token', { method: 'GET' });
@@ -65,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 isSpotifyConnected = true;
                 const btn = document.getElementById('connect-spotify-button');
                 if (btn) { btn.textContent = 'Spotify Conectado'; btn.disabled = true; }
+                // cargar perfil
+                fetchSpotifyProfile().catch(() => {});
             });
             spotifyPlayer.addListener('not_ready', () => {
                 isSpotifyConnected = false;
@@ -100,6 +103,31 @@ document.addEventListener('DOMContentLoaded', () => {
             // puede fallar si ya está activo; ignorar suavemente
             console.warn('transfer playback warn', e.message);
         }
+    }
+
+    async function fetchSpotifyProfile() {
+        try {
+            const me = await spotifyApi('GET', '/me');
+            spotifyUser = {
+                name: me.display_name || (me.id ?? 'Usuario'),
+                image: (me.images && me.images[0] && me.images[0].url) || ''
+            };
+            renderUserBadge();
+        } catch (e) {
+            console.warn('No se pudo obtener perfil', e.message);
+        }
+    }
+
+    function renderUserBadge() {
+        const existing = document.getElementById('user-badge');
+        if (!spotifyUser) { if (existing) existing.remove(); return; }
+        const html = `
+            <div id="user-badge" style="position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.5);padding:6px 10px;border-radius:20px;border:1px solid #1DB954;">
+                ${spotifyUser.image ? `<img src="${spotifyUser.image}" alt="pfp" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">` : ''}
+                <span style="font-weight:700;">Hola, ${spotifyUser.name}</span>
+            </div>
+        `;
+        if (existing) existing.outerHTML = html; else appContainer.insertAdjacentHTML('afterbegin', html);
     }
 
     async function playSpotifyClip(uri, ms) {
@@ -163,13 +191,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- MENU & GENRE SELECTION LOGIC ----
     function initializeMenu() {
         // Build the main menu
+        const connected = isSpotifyConnected && spotifyDeviceId;
         menuContainer.innerHTML = `
             <h1>EN UNA NOTA</h1>
             <div class="modes-container">
-                <button class="mode-button" id="connect-spotify-button">CONECTAR SPOTIFY</button>
+                <button class="mode-button spotify-button" id="connect-spotify-button">
+                    <span class="spotify-logo"></span>
+                    Conectar con Spotify
+                </button>
+                ${connected ? `
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
                 <button class="mode-button disabled">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
+                ` : ''}
             </div>
         `;
         const dynBtn = document.getElementById('genres-button-dynamic');
