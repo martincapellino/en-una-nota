@@ -249,10 +249,12 @@ document.addEventListener('DOMContentLoaded', () => {
             connectSpotify(true);
         });
         const myPlaylistsBtn = document.getElementById('my-playlists-button');
-        if (myPlaylistsBtn) myPlaylistsBtn.addEventListener('click', () => {
-            playSound('click');
-            showMyPlaylists();
-        });
+        if (myPlaylistsBtn) {
+            myPlaylistsBtn.onclick = () => {
+                playSound('click');
+                showMyPlaylists();
+            };
+        }
         const logoutBtn = document.getElementById('logout-button');
         if (logoutBtn) logoutBtn.addEventListener('click', async () => {
             playSound('click');
@@ -274,9 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         genreSelectionContainer.innerHTML = `
+            <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
             <h2>ELEGÍ UN GÉNERO</h2>
             <div id="genre-buttons">${genreButtonsHTML}</div>
-            <button class="back-button" id="back-to-menu-button">Volver</button>
         `;
 
         document.getElementById('back-to-menu-button').addEventListener('click', () => {
@@ -309,9 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }).join('');
             genreSelectionContainer.innerHTML = `
+                <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
                 <h2>MIS PLAYLISTS</h2>
                 <div id="my-playlists-grid">${cards || '<p class="loading-text">No se encontraron playlists.</p>'}</div>
-                <button class="back-button" id="back-to-menu-button">Volver</button>
             `;
             document.getElementById('back-to-menu-button').addEventListener('click', () => {
                 playSound('click');
@@ -319,11 +321,37 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             genreSelectionContainer.addEventListener('click', (e) => {
                 const btn = e.target.closest('.genre-button');
-                if (btn) {
-                    const card = btn.closest('[data-playlist-id]');
+                if (btn && btn.hasAttribute('data-playlist-id')) {
+                    playSound('click');
+                    const card = btn.closest('.playlist-card');
                     const playlistName = card?.querySelector('.playlist-title')?.textContent || 'Mi playlist';
-                    const fakeEvent = { target: { classList: { contains: (cls) => cls === 'genre-button' }, dataset: { playlistId: btn.getAttribute('data-playlist-id') }, innerText: playlistName } };
-                    handleGenreClick(fakeEvent);
+                    const playlistId = btn.getAttribute('data-playlist-id');
+                    currentGenre = { playlistId, playlistName };
+                    
+                    genreSelectionContainer.innerHTML = `<h2 class="loading-text">Buscando una canción en "${playlistName}"...</h2>`;
+
+                    fetch('/api/get-track', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ playlistId })
+                    }).then(async response => {
+                        if (!response.ok) {
+                            let errorData = {};
+                            try { errorData = await response.json(); } catch (_) {}
+                            const baseMsg = errorData?.error || 'Server function returned an error';
+                            const details = errorData?.details ? (typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)) : '';
+                            const composed = details ? `${baseMsg} | details: ${details}` : baseMsg;
+                            throw new Error(composed);
+                        }
+                        return response.json();
+                    }).then(track => {
+                        currentTrack = track;
+                        startGame();
+                    }).catch(error => {
+                        console.error("Error fetching the track:", error);
+                        alert(`Hubo un error al buscar la canción: ${error.message}`);
+                        showMyPlaylists();
+                    });
                 }
             });
             showScreen(genreSelectionContainer);
