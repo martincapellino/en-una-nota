@@ -77,44 +77,66 @@ const getAppToken = async () => {
 
 // Fallback: mapear playlistId a términos de búsqueda (género/keywords)
 const playlistIdToSearchQuery = {
-    '37i9dQZF1DXcBWIGoYBM5M': 'pop', // Today\'s Top Hits ~ pop mainstream
-    '37i9dQZF1DWXRqgorJj26U': 'rock', // Rock Classics
-    '37i9dQZF1DX10zKGVs6_cs': 'latin' // Viva Latino
+    '37i9dQZF1DXcBWIGoYBM5M': ['genre:"pop"', 'pop', 'dance pop', 'top hits'],
+    '37i9dQZF1DWXRqgorJj26U': ['genre:"rock"', 'classic rock', 'rock'],
+    '37i9dQZF1DX10zKGVs6_cs': ['genre:"latin"', 'latin', 'reggaeton']
 };
 
-async function fetchTracksViaSearch(token, searchTerm) {
+async function fetchTracksViaSearch(token, searchTerms) {
     const marketsToTry = ['US', 'AR', 'BR', undefined];
-    for (const market of marketsToTry) {
-        try {
-            const resp = await axios.get('https://api.spotify.com/v1/search', {
-                headers: { 'Authorization': `Bearer ${token}` },
-                timeout: 10000,
-                params: {
-                    q: `genre:"${searchTerm}"`,
-                    type: 'track',
-                    limit: 50,
-                    market: market
-                }
-            });
-            const items = resp.data?.tracks?.items || [];
-            const playable = items.filter(t => t && t.preview_url);
-            if (playable.length > 0) return playable;
-        } catch (err) {
-            const status = err.response?.status;
-            const data = err.response?.data || err.message;
-            console.error('Search fallback failed', market || 'none', status, data);
-            if (status === 401 || status === 403) {
-                // caller maneja invalidación del token si corresponde
-                throw err;
+    for (const term of searchTerms) {
+        for (const market of marketsToTry) {
+            try {
+                const resp = await axios.get('https://api.spotify.com/v1/search', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    timeout: 10000,
+                    params: {
+                        q: term,
+                        type: 'track',
+                        limit: 50,
+                        market: market
+                    }
+                });
+                const items = resp.data?.tracks?.items || [];
+                const playable = items.filter(t => t && t.preview_url);
+                if (playable.length > 0) return playable;
+            } catch (err) {
+                const status = err.response?.status;
+                const data = err.response?.data || err.message;
+                console.error('Search fallback failed', term, market || 'none', status, data);
+                if (status === 401 || status === 403) throw err;
+                if (status === 429) { const waitMs = retryAfterMsFrom(err.response) || 500; await sleep(waitMs); continue; }
+                if (typeof status === 'number' && status >= 500) { await sleep(200); continue; }
             }
-            if (status === 429) {
-                const waitMs = retryAfterMsFrom(err.response) || 500;
-                await sleep(waitMs);
-                continue;
-            }
-            if (typeof status === 'number' && status >= 500) {
-                await sleep(200);
-                continue;
+        }
+    }
+    return [];
+}
+
+async function fetchTracksViaRecommendations(token, genres) {
+    const marketsToTry = ['US', 'AR', 'BR', undefined];
+    for (const genre of genres) {
+        for (const market of marketsToTry) {
+            try {
+                const resp = await axios.get('https://api.spotify.com/v1/recommendations', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    timeout: 10000,
+                    params: {
+                        seed_genres: genre.replace(/[^a-z]/gi, ','),
+                        limit: 50,
+                        market: market
+                    }
+                });
+                const items = resp.data?.tracks || [];
+                const playable = items.filter(t => t && t.preview_url);
+                if (playable.length > 0) return playable;
+            } catch (err) {
+                const status = err.response?.status;
+                const data = err.response?.data || err.message;
+                console.error('Recommendations fallback failed', genre, market || 'none', status, data);
+                if (status === 401 || status === 403) throw err;
+                if (status === 429) { const waitMs = retryAfterMsFrom(err.response) || 500; await sleep(waitMs); continue; }
+                if (typeof status === 'number' && status >= 500) { await sleep(200); continue; }
             }
         }
     }
@@ -172,19 +194,24 @@ module.exports = async (req, res) => {
             console.error('Playlist existence check failed:', st, dt);
             // Fallback a búsqueda si la playlist devuelve 404 con Client Credentials
             if (st === 404) {
-                const term = playlistIdToSearchQuery[playlistId];
-                if (term) {
-                    console.log('Falling back to search with term:', term);
+                const terms = playlistIdToSearchQuery[playlistId] || [];
+                if (terms.length) {
+                    console.log('Falling back to search with terms:', terms);
                     // permitir un refresh de token si fuera necesario en el flujo del caller
                     let currentToken = token;
                     try {
-                        let tracks = await fetchTracksViaSearch(currentToken, term);
+                        let tracks = await fetchTracksViaSearch(currentToken, terms);
                         if (!tracks.length) {
                             // intento refresh token y reintentar búsqueda
                             tokenCache = null;
                             tokenExpiresAt = 0;
                             currentToken = await getAppToken();
-                            tracks = await fetchTracksViaSearch(currentToken, term);
+                            tracks = await fetchTracksViaSearch(currentToken, terms);
+                        }
+                        if (!tracks.length) {
+                            // último intento: recomendaciones por género
+                            const genreSeeds = terms.map(t => t.replace(/genre:\"|\"/g, ''));
+                            tracks = await fetchTracksViaRecommendations(currentToken, genreSeeds);
                         }
                         if (tracks.length) {
                             const t = tracks[Math.floor(Math.random() * tracks.length)];
@@ -192,15 +219,31 @@ module.exports = async (req, res) => {
                                 name: t.name,
                                 artist: t.artists.map(a => a.name).join(', '),
                                 preview_url: t.preview_url,
-                                album_art: t.album.images[0]?.url
+                                album_art: (t.album?.images?.[0]?.url) || ''
                             });
+                        } else {
+                            return sendJsonError(
+                                res,
+                                404,
+                                'No playable tracks found via playlist (404) nor via search/recommendations.',
+                                dt
+                            );
                         }
                     } catch (fbErr) {
-                        console.error('Search fallback hard failure:', fbErr.response?.data || fbErr.message);
+                        const s2 = fbErr.response?.status || 500;
+                        const d2 = fbErr.response?.data || fbErr.message;
+                        console.error('Search/recommendations fallback hard failure:', d2);
+                        return sendJsonError(
+                            res,
+                            s2,
+                            'Fallback to search/recommendations failed.',
+                            d2
+                        );
                     }
                 }
             }
-            throw plErr; // si no hubo fallback exitoso, propagar
+            // si no era 404 o no hubo términos, propagar error original
+            throw plErr;
         }
         
         // **CORRECTION #2: This URL is now also correct.**
