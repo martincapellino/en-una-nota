@@ -31,7 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function getAccessToken() {
         const resp = await fetch('/api/spotify-access-token', { method: 'GET' });
-        if (!resp.ok) throw new Error('No se pudo obtener access token');
+        if (!resp.ok) {
+            // si no hay sesión, invitar a login
+            try { const data = await resp.json(); if (data?.action === 'login' && data?.login_url) window.location.href = data.login_url; } catch (_) {}
+            throw new Error('No se pudo obtener access token');
+        }
         const data = await resp.json();
         return data.access_token;
     }
@@ -529,6 +533,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ---- INITIALIZATION ----
     initializeMenu();
+    // Intentar autoconectar si ya hay sesión (cookie)
+    setTimeout(() => { if (!isSpotifyConnected) connectSpotify(); }, 1200);
     if (genresButton) genresButton.addEventListener('click', () => {
         playSound('click');
         showGenreSelection();
