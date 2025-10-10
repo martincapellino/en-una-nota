@@ -1,8 +1,8 @@
 const axios = require('axios');
 
-// 🔑 CREDENCIALES DE SPOTIFY
-const SPOTIFY_CLIENT_ID = '703d482e19fb400788f84305b589d41d';
-const SPOTIFY_CLIENT_SECRET = '4716afe5dcde425c97e5737c7218f36b';
+// 🔑 CREDENCIALES DE SPOTIFY (usar variables de entorno)
+const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 function sendJsonError(res, statusCode, message, extra) {
     const payload = { error: message };
@@ -13,6 +13,9 @@ function sendJsonError(res, statusCode, message, extra) {
 // Obtener token de acceso de Spotify
 async function getSpotifyToken() {
     try {
+        if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+            throw new Error('Faltan variables de entorno SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET');
+        }
         const response = await axios.post(
             'https://accounts.spotify.com/api/token',
             'grant_type=client_credentials',
@@ -31,30 +34,35 @@ async function getSpotifyToken() {
     }
 }
 
-// Obtener canciones de una playlist de Spotify
+// Obtener TODAS las canciones de una playlist de Spotify (paginado)
 async function fetchTracksFromSpotifyPlaylist(playlistId, token) {
     try {
-        const response = await axios.get(
-            `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-            {
-                headers: { 'Authorization': `Bearer ${token}` },
-                params: { limit: 100 }, // Obtener hasta 100 canciones
-                timeout: 10000
-            }
-        );
+        const limit = 100;
+        let offset = 0;
+        let allItems = [];
+        let nextUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`;
 
-        const items = response.data.items || [];
-        
-        // Filtrar solo las canciones que tienen preview_url disponible
-        const playableTracks = items
-            .filter(item => item.track && item.track.preview_url)
+        while (nextUrl) {
+            const response = await axios.get(nextUrl, {
+                headers: { 'Authorization': `Bearer ${token}` },
+                timeout: 15000
+            });
+
+            const items = response.data.items || [];
+            allItems = allItems.concat(items);
+            nextUrl = response.data.next || null;
+        }
+
+        // Filtrar solo las canciones con preview y que no sean locales/episodios
+        const playableTracks = allItems
+            .filter(item => item && item.track && item.track.type === 'track' && !item.track.is_local && item.track.preview_url)
             .map(item => ({
                 name: item.track.name,
                 artist: item.track.artists.map(a => a.name).join(', '),
                 preview_url: item.track.preview_url,
-                // Spotify tiene 3 tamaños: 640x640, 300x300, 64x64
-                // Usamos la imagen más grande disponible
-                album_art: item.track.album.images[0]?.url || item.track.album.images[1]?.url || ''
+                album_art: (item.track.album.images && item.track.album.images[0] && item.track.album.images[0].url)
+                    || (item.track.album.images && item.track.album.images[1] && item.track.album.images[1].url)
+                    || ''
             }));
 
         return playableTracks;
