@@ -76,7 +76,7 @@ h2 {
     font-size: 2.5rem;
     font-weight: 700;
     letter-spacing: 4px;
-    margin-top: 10px;
+    margin-top: 50px;
     margin-bottom: 40px;
     background: linear-gradient(45deg, #fff, #a8e6cf);
     -webkit-background-clip: text;
@@ -241,21 +241,21 @@ button:active {
 
 .back-arrow-button {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.4);
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.5);
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
-    padding: 10px 18px;
+    padding: 8px 16px;
     border-radius: 10px;
     font-weight: 700;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     cursor: pointer;
     z-index: 100;
     transition: all 0.3s ease;
 }
 .back-arrow-button:hover {
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.7);
     border-color: rgba(255, 255, 255, 0.6);
     transform: translateX(-3px);
 }
