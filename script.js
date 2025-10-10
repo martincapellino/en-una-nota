@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     initializeMenu();
                     return;
                 }
-                try { await spotifyPlayer.connect(); } catch (_) {}
+                try { await spotifyPlayer.connect(); } catch (e) { console.warn('reconnect failed', e.message); }
                 return;
             }
 
@@ -79,9 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
             spotifyPlayer.addListener('not_ready', () => {
                 isSpotifyConnected = false;
             });
-            spotifyPlayer.addListener('initialization_error', ({ message }) => console.error('init_error', message));
-            spotifyPlayer.addListener('authentication_error', ({ message }) => console.error('auth_error', message));
-            spotifyPlayer.addListener('account_error', ({ message }) => console.error('account_error', message));
+            spotifyPlayer.addListener('initialization_error', ({ message }) => { console.error('init_error', message); alert('Error inicializando Spotify. Recargá la página.'); });
+            spotifyPlayer.addListener('authentication_error', ({ message }) => { console.error('auth_error', message); alert('Sesión expirada. Volvé a Conectar con Spotify.'); isSpotifyConnected = false; initializeMenu(); });
+            spotifyPlayer.addListener('account_error', ({ message }) => { console.error('account_error', message); alert('Tu cuenta no permite streaming (requiere Premium).'); });
 
             await spotifyPlayer.connect();
         } catch (e) {
@@ -255,21 +255,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // requiere sesión
         try {
             const playlists = await spotifyApi('GET', '/me/playlists?limit=50');
-            const items = (playlists.items || []).filter(p => p.owner && p.owner.id && (p.owner.id === (spotifyUser?.id || '')) || p.owner.display_name === spotifyUser?.name);
-            const buttons = (items.length ? items : (playlists.items || [])).map(p => {
+            const owned = (playlists.items || []).filter(p => p.owner && (p.owner.id === (spotifyUser?.id || '')));
+            const list = owned.length ? owned : (playlists.items || []);
+            const cards = list.map(p => {
                 const cover = (p.images && p.images[1] && p.images[1].url) || (p.images && p.images[0] && p.images[0].url) || '';
-                return `<button class="genre-button" data-playlist-id="${p.id}">${p.name.toUpperCase()}</button>`;
+                const tracksTotal = p.tracks?.total ?? '';
+                return `
+                    <div class="playlist-card" data-playlist-id="${p.id}">
+                        ${cover ? `<img src="${cover}" alt="${p.name}">` : ''}
+                        <div class="playlist-title">${p.name}</div>
+                        <div class="playlist-meta">${tracksTotal} temas</div>
+                        <button class="genre-button" data-playlist-id="${p.id}">JUGAR</button>
+                    </div>
+                `;
             }).join('');
             genreSelectionContainer.innerHTML = `
                 <h2>MIS PLAYLISTS</h2>
-                <div id="genre-buttons">${buttons || '<p class="loading-text">No se encontraron playlists.</p>'}</div>
+                <div id="my-playlists-grid">${cards || '<p class="loading-text">No se encontraron playlists.</p>'}</div>
                 <button class="back-button" id="back-to-menu-button">Volver</button>
             `;
             document.getElementById('back-to-menu-button').addEventListener('click', () => {
                 playSound('click');
                 initializeMenu();
             });
-            document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
+            genreSelectionContainer.addEventListener('click', (e) => {
+                const t = e.target.closest('[data-playlist-id]');
+                if (t) {
+                    const fakeEvent = { target: { classList: { contains: (cls) => cls === 'genre-button' }, dataset: { playlistId: t.getAttribute('data-playlist-id') }, innerText: t.querySelector('.playlist-title')?.textContent || 'Mi playlist' } };
+                    handleGenreClick(fakeEvent);
+                }
+            });
             showScreen(genreSelectionContainer);
         } catch (e) {
             console.error('Error obteniendo playlists', e);
