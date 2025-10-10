@@ -19,7 +19,7 @@ const getAppToken = async () => {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
-    // **CORRECTION #1: The URL to get the token was wrong.**
+    // **CORRECTION #1: This URL is now correct.**
     const tokenResponse = await axios.post('https://accounts.spotify.com/api/token', params.toString(), {
         headers: {
             'Content-Type': 'application/x-form-urlencoded',
@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
     try {
         const token = await getAppToken();
         
-        // **CORRECTION #2: The URL to get the playlist tracks was wrong.**
+        // **CORRECTION #2: This URL is now also correct.**
         const tracksResponse = await axios.get(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
