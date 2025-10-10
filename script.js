@@ -243,10 +243,17 @@ document.addEventListener('DOMContentLoaded', () => {
             showGenreSelection();
         });
         const connectBtn = document.getElementById('connect-spotify-button');
-        if (connectBtn) connectBtn.addEventListener('click', () => {
+        if (connectBtn) connectBtn.addEventListener('click', async () => {
             playSound('click');
-            // Con clic manual permitimos cambiar de cuenta (limpia sesión)
-            connectSpotify(true);
+            // Verificar si ya hay sesión válida antes de limpiar
+            const hasSession = localStorage.getItem('spotify_refresh_token');
+            if (hasSession && spotifyUser) {
+                // Ya hay sesión, solo conectar SDK
+                connectSpotify(false);
+            } else {
+                // No hay sesión, limpiar y redirigir a login
+                connectSpotify(true);
+            }
         });
         const myPlaylistsBtn = document.getElementById('my-playlists-button');
         if (myPlaylistsBtn) {
@@ -725,13 +732,18 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMenu();
     // Precargar perfil si ya hay cookie o localStorage; NO autoabrir login
     setTimeout(async () => {
-        try { 
-            await fetchSpotifyProfile(); 
-            // Si el perfil se cargó, inicializar SDK automáticamente
-            if (spotifyUser && !spotifyPlayer) {
-                await connectSpotify(false);
+        const hasToken = localStorage.getItem('spotify_refresh_token');
+        if (hasToken || tokenFromUrl) {
+            try { 
+                await fetchSpotifyProfile(); 
+                // Si el perfil se cargó, inicializar SDK automáticamente
+                if (spotifyUser && !spotifyPlayer) {
+                    await connectSpotify(false);
+                }
+            } catch (err) {
+                console.warn('Error cargando perfil:', err.message);
             }
-        } catch (_) {}
+        }
     }, 800);
     if (genresButton) genresButton.addEventListener('click', () => {
         playSound('click');
