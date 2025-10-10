@@ -28,9 +28,14 @@ const getAppToken = async () => {
 
 module.exports = async (req, res) => {
   try {
-    const { playlistId } = req.body || {};
+    // 👇 Vercel no siempre parsea JSON automáticamente
+    let body = req.body;
+    if (typeof body === 'string') {
+      body = JSON.parse(body);
+    }
 
-    console.log('Received playlistId:', playlistId);
+    const { playlistId } = body || {};
+    console.log('📩 Received playlistId:', playlistId);
 
     if (!playlistId) {
       return res.status(400).json({ error: 'Missing playlistId in request body.' });
@@ -59,7 +64,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error in get-track function:", error.response ? error.response.data : error.message);
+    console.error("❌ Error in get-track function:", error.response ? error.response.data : error.message);
     return res.status(500).json({ error: 'The call to Spotify failed from the server function.' });
   }
 };
