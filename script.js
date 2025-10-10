@@ -361,11 +361,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN" autocomplete="off">
                 <div id="suggestions" class="suggestions-container"></div>
             </div>
-            <button id="skipBtn" class="skip-button">SKIP</button>
+            <button id="skipBtn" class="skip-button">Dame más tiempo</button>
             <p id="feedback"></p>
             <div class="game-buttons">
                 <button class="back-button" id="next-song-button" style="display: none;">Siguiente Canción</button>
                 <button class="back-button" id="give-up-button">Me Rindo</button>
+                <button class="back-button" id="back-to-genres-button">Volver</button>
             </div>
         `;
 
@@ -381,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const guessInput = document.getElementById('guessInput');
         const giveUpButton = document.getElementById('give-up-button');
         const nextSongButton = document.getElementById('next-song-button');
+        const backToGenresButton = document.getElementById('back-to-genres-button');
         
         playBtn.addEventListener('click', async () => {
             playSound('click');
@@ -435,6 +437,10 @@ document.addEventListener('DOMContentLoaded', () => {
             playSound('click');
             nextSong();
         });
+        backToGenresButton.addEventListener('click', () => {
+            playSound('click');
+            showGenreSelection();
+        });
     }
 
     // Reproducción ahora gestionada por Spotify Web Playback SDK
@@ -442,7 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleSkip() {
         // Funciona como un intento fallido
         const feedback = document.getElementById('feedback');
-        feedback.textContent = 'SKIP...';
+        feedback.textContent = 'Dando más tiempo...';
         feedback.className = 'incorrect';
         
         currentAttempt++;
