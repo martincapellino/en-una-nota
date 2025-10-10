@@ -11,30 +11,36 @@
 </head>
 <body>
 
-    <!-- Pantalla de Menú Principal -->
-    <div id="menu-container" class="screen active">
-        <h1>EN UNA NOTA</h1>
-        <div class="modes-container">
-            <button class="mode-button disabled">DESAFÍO DIARIO</button>
-            <button class="mode-button disabled">MIS PLAYLISTS</button>
-            <button class="mode-button" id="genres-button">GÉNEROS MUSICALES</button>
+    <!-- This is the main container that will hold all our screens -->
+    <div id="app-container">
+        
+        <!-- Screen 1: Main Menu -->
+        <div id="menu-container" class="screen active">
+            <h1>EN UNA NOTA</h1>
+            <div class="modes-container">
+                <button class="mode-button disabled">DESAFÍO DIARIO</button>
+                <button class="mode-button disabled">MIS PLAYLISTS</button>
+                <button class="mode-button" id="genres-button">GÉNEROS MUSICALES</button>
+            </div>
         </div>
-    </div>
 
-    <!-- Pantalla de Selección de Género -->
-    <div id="genre-selection-container" class="screen">
-        <h2>ELEGÍ UN GÉNERO</h2>
-        <div id="genre-buttons">
-            <!-- Los botones de género se crearán acá con JavaScript -->
+        <!-- Screen 2: Genre Selection -->
+        <div id="genre-selection-container" class="screen">
+            <h2>ELEGÍ UN GÉNERO</h2>
+            <div id="genre-buttons">
+                <!-- Genre buttons will be created here by JavaScript -->
+            </div>
+            <button class="back-button" id="back-to-menu-button">Volver</button>
         </div>
-        <button class="back-button" id="back-to-menu-button">Volver</button>
-    </div>
 
-    <!-- Pantalla del Juego -->
-    <div id="game-container" class="screen">
-        <!-- Esta interfaz se generará con JavaScript cuando tengamos una canción -->
+        <!-- Screen 3: The Game Itself -->
+        <div id="game-container" class="screen">
+            <!-- The game interface will be built here by JavaScript -->
+        </div>
+
     </div>
 
     <script src="script.js"></script>
 </body>
 </html>
+
