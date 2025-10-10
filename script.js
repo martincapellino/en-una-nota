@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const genres = {
         "Today's Top Hits": "37i9dQZF1DXcBWIGoYBM5M",
         "Rock Classics": "37i9dQZF1DWXRqgorJj26U",
-        "Viva Latino": "37i9dQZF1DX10zKGVs6_cs"
+        "Latinoide": "37i9dQZF1DX10zKGVs6_cs"
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const blurLevels = [25, 15, 5, 0];
     let playTimeout = null;
     let allTrackNames = []; // For the autocomplete suggestions
+    let currentGenre = null; // Para recordar el género actual
 
     // ---- NAVIGATION LOGIC ----
     const showScreen = (screen) => {
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.target.classList.contains('genre-button')) {
             const playlistId = event.target.dataset.playlistId;
             const playlistName = event.target.innerText;
+            currentGenre = { playlistId, playlistName };
             
             genreSelectionContainer.innerHTML = `<h2 class="loading-text">Buscando una canción en "${playlistName}"...</h2>`;
 
@@ -114,10 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="input-area">
                 <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN" autocomplete="off">
+                <div id="suggestions" class="suggestions-container"></div>
             </div>
             <p id="feedback"></p>
             <audio id="audioPlayer" src="${currentTrack.preview_url}"></audio>
-            <button class="back-button" id="give-up-button">Me Rindo</button>
+            <div class="game-buttons">
+                <button class="back-button" id="next-song-button" style="display: none;">Siguiente Canción</button>
+                <button class="back-button" id="give-up-button">Me Rindo</button>
+            </div>
         `;
 
         setupGameListeners();
@@ -130,23 +136,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const volumeSlider = document.getElementById('volumeSlider');
         const guessInput = document.getElementById('guessInput');
         const giveUpButton = document.getElementById('give-up-button');
+        const nextSongButton = document.getElementById('next-song-button');
         const audioPlayer = document.getElementById('audioPlayer');
         
         if(audioPlayer) audioPlayer.volume = volumeSlider.value / 100;
 
         playBtn.addEventListener('click', () => togglePlayPause(audioPlayer));
         volumeSlider.addEventListener('input', (e) => { if(audioPlayer) audioPlayer.volume = e.target.value / 100 });
-        guessInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') checkGuess(e.target.value);
+        
+        // Autocompletado inteligente
+        guessInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim().toLowerCase();
+            if (query.length >= 2) {
+                showSuggestions(query);
+            } else {
+                hideSuggestions();
+            }
         });
+        
+        guessInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const suggestions = document.querySelectorAll('.suggestion-item');
+                if (suggestions.length > 0 && document.querySelector('.suggestion-item.highlighted')) {
+                    const highlighted = document.querySelector('.suggestion-item.highlighted');
+                    checkGuess(highlighted.textContent);
+                } else {
+                    checkGuess(e.target.value);
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightNextSuggestion();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightPrevSuggestion();
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+        
         giveUpButton.addEventListener('click', giveUp);
+        nextSongButton.addEventListener('click', nextSong);
     }
 
     function togglePlayPause(audioPlayer) {
         clearTimeout(playTimeout);
         const playBtn = document.getElementById('playBtn');
         if (audioPlayer.paused) {
-            audioPlayer.currentTime = 0;
+            audioPlayer.currentTime = 0; // SIEMPRE desde el inicio
             audioPlayer.play().catch(e => console.error("Error playing audio:", e));
             playBtn.textContent = '❚❚';
 
@@ -168,7 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const normalizedGuess = guess.trim().toLowerCase();
         const normalizedAnswer = currentTrack.name.toLowerCase();
 
-        if (normalizedGuess === normalizedAnswer) {
+        // Verificar coincidencia exacta o parcial significativa
+        const isExactMatch = normalizedGuess === normalizedAnswer;
+        const isPartialMatch = normalizedAnswer.includes(normalizedGuess) && normalizedGuess.length >= 3;
+        const isReverseMatch = normalizedGuess.includes(normalizedAnswer.split(' ')[0]) && normalizedAnswer.split(' ')[0].length >= 3;
+
+        if (isExactMatch || isPartialMatch || isReverseMatch) {
             endGame(true);
         } else {
             feedback.textContent = 'INCORRECTO...';
@@ -182,11 +223,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('trackTimer').textContent = `${nextDuration}s`;
             }
         }
+        hideSuggestions();
     }
     
     function endGame(isCorrect) {
         const feedback = document.getElementById('feedback');
         const giveUpButton = document.getElementById('give-up-button');
+        const nextSongButton = document.getElementById('next-song-button');
         const audioPlayer = document.getElementById('audioPlayer');
         if(audioPlayer) audioPlayer.pause();
         clearTimeout(playTimeout);
@@ -203,10 +246,113 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('guessInput').disabled = true;
         giveUpButton.textContent = 'Elegir Otro Género';
         giveUpButton.onclick = showGenreSelection;
+        nextSongButton.style.display = 'inline-block';
     }
 
     function giveUp() {
         endGame(false);
+    }
+
+    function showSuggestions(query) {
+        const suggestions = document.getElementById('suggestions');
+        const trackName = currentTrack.name.toLowerCase();
+        
+        // Buscar coincidencias parciales
+        const matches = [];
+        const words = trackName.split(' ');
+        
+        for (let i = 0; i < words.length; i++) {
+            for (let j = i + 1; j <= words.length; j++) {
+                const substring = words.slice(i, j).join(' ');
+                if (substring.includes(query) && substring.length >= query.length) {
+                    matches.push({
+                        text: substring,
+                        score: substring.length - query.length // Menor score = mejor match
+                    });
+                }
+            }
+        }
+        
+        // Ordenar por score y tomar los mejores 5
+        matches.sort((a, b) => a.score - b.score);
+        const topMatches = matches.slice(0, 5).map(m => m.text);
+        
+        if (topMatches.length > 0) {
+            suggestions.innerHTML = topMatches.map((match, index) => 
+                `<div class="suggestion-item ${index === 0 ? 'highlighted' : ''}" data-text="${match}">${match}</div>`
+            ).join('');
+            
+            // Agregar listeners a las sugerencias
+            suggestions.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    checkGuess(item.textContent);
+                });
+            });
+        } else {
+            hideSuggestions();
+        }
+    }
+
+    function hideSuggestions() {
+        const suggestions = document.getElementById('suggestions');
+        suggestions.innerHTML = '';
+    }
+
+    function highlightNextSuggestion() {
+        const suggestions = document.querySelectorAll('.suggestion-item');
+        const current = document.querySelector('.suggestion-item.highlighted');
+        if (current) {
+            current.classList.remove('highlighted');
+            const next = current.nextElementSibling;
+            if (next) {
+                next.classList.add('highlighted');
+            } else if (suggestions.length > 0) {
+                suggestions[0].classList.add('highlighted');
+            }
+        }
+    }
+
+    function highlightPrevSuggestion() {
+        const suggestions = document.querySelectorAll('.suggestion-item');
+        const current = document.querySelector('.suggestion-item.highlighted');
+        if (current) {
+            current.classList.remove('highlighted');
+            const prev = current.previousElementSibling;
+            if (prev) {
+                prev.classList.add('highlighted');
+            } else if (suggestions.length > 0) {
+                suggestions[suggestions.length - 1].classList.add('highlighted');
+            }
+        }
+    }
+
+    async function nextSong() {
+        if (!currentGenre) return;
+        
+        const nextSongButton = document.getElementById('next-song-button');
+        nextSongButton.textContent = 'Cargando...';
+        nextSongButton.disabled = true;
+        
+        try {
+            const response = await fetch('/api/get-track', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playlistId: currentGenre.playlistId })
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al obtener nueva canción');
+            }
+            
+            currentTrack = await response.json();
+            startGame(); // Reinicia el juego con la nueva canción
+
+        } catch (error) {
+            console.error("Error fetching next track:", error);
+            alert(`Hubo un error al buscar la siguiente canción: ${error.message}`);
+            nextSongButton.textContent = 'Siguiente Canción';
+            nextSongButton.disabled = false;
+        }
     }
 
     function updateBlur() {
