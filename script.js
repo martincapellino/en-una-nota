@@ -164,27 +164,47 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(playTimeout);
         await ensureActiveDevice();
         
-        // Iniciar reproducción exactamente desde 0ms
-        const startTimestamp = Date.now();
-        await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
-            uris: [uri], 
-            position_ms: 0 
-        });
-        
-        const playBtn = document.getElementById('playBtn');
-        if (playBtn) playBtn.textContent = '❚❚';
-        
-        // Calcular el tiempo restante considerando la latencia de la API
-        const apiLatency = Date.now() - startTimestamp;
-        const adjustedDuration = Math.max(ms - apiLatency, ms * 0.9); // Mínimo 90% del tiempo solicitado
-        
-        playTimeout = setTimeout(async () => {
-            try { 
-                await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); 
-            } catch (_) {}
+        try {
+            // Paso 1: Pausar cualquier reproducción actual
+            try {
+                await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`);
+            } catch (_) { /* ignorar si no hay nada reproduciéndose */ }
+            
+            // Pequeña pausa para asegurar que Spotify procesó la pausa
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            // Paso 2: Cargar la canción y forzar posición a 0ms
+            await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
+                uris: [uri], 
+                position_ms: 0 
+            });
+            
+            // Paso 3: Asegurar que está en 0ms con un seek explícito
+            await new Promise(resolve => setTimeout(resolve, 100));
+            try {
+                await spotifyApi('PUT', `/me/player/seek?position_ms=0&device_id=${encodeURIComponent(spotifyDeviceId)}`);
+            } catch (_) { /* ignorar si falla */ }
+            
+            const playBtn = document.getElementById('playBtn');
+            if (playBtn) playBtn.textContent = '❚❚';
+            
+            // Marcar el inicio para timing preciso
+            const startTimestamp = Date.now();
+            
+            // Configurar pausa automática
+            playTimeout = setTimeout(async () => {
+                try { 
+                    await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); 
+                } catch (_) {}
+                const btn = document.getElementById('playBtn');
+                if (btn) btn.textContent = '▶';
+            }, ms);
+            
+        } catch (e) {
+            console.error('Error reproduciendo clip:', e);
             const btn = document.getElementById('playBtn');
             if (btn) btn.textContent = '▶';
-        }, adjustedDuration);
+        }
     }
 
     // ---- SOUND EFFECTS ----
