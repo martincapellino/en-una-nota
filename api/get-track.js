@@ -125,7 +125,11 @@ module.exports = async (req, res) => {
         // 3. Seleccionar una canción aleatoria
         const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
         
-        return res.status(200).json(randomTrack);
+        // 4. Devolver la canción random + todas las canciones para autocompletado
+        return res.status(200).json({
+            track: randomTrack,
+            allTracks: tracks.map(t => ({ name: t.name, artist: t.artist }))
+        });
         
     } catch (error) {
         const data = error.response?.data || error.message;
