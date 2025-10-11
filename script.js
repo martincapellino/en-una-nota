@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let spotifyDeviceId = null;
     let isSpotifyConnected = false;
     let spotifyUser = null;
+    let targetDuration = null; // Duración objetivo del clip actual
+    let playStartTime = null; // Momento exacto en que empezó a reproducir
 
     async function getAccessToken() {
         const headers = { 'Content-Type': 'application/json' };
@@ -100,6 +102,28 @@ document.addEventListener('DOMContentLoaded', () => {
             spotifyPlayer.addListener('initialization_error', ({ message }) => { console.error('init_error', message); alert('Error inicializando Spotify. Recargá la página.'); });
             spotifyPlayer.addListener('authentication_error', ({ message }) => { console.error('auth_error', message); alert('Sesión expirada. Volvé a Conectar con Spotify.'); isSpotifyConnected = false; initializeMenu(); });
             spotifyPlayer.addListener('account_error', ({ message }) => { console.error('account_error', message); alert('Tu cuenta no permite streaming (requiere Premium).'); });
+            
+            // Listener para timing exacto: detecta cuándo REALMENTE empieza a reproducir
+            spotifyPlayer.addListener('player_state_changed', state => {
+                if (!state) return;
+                
+                // Si empieza a reproducir y tenemos una duración objetivo pendiente
+                if (!state.paused && targetDuration !== null && playStartTime === null) {
+                    playStartTime = Date.now();
+                    
+                    // Iniciar el timer AHORA que sabemos que está reproduciendo
+                    clearTimeout(playTimeout);
+                    playTimeout = setTimeout(async () => {
+                        try { 
+                            await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); 
+                        } catch (_) {}
+                        const btn = document.getElementById('playBtn');
+                        if (btn) btn.textContent = '▶';
+                        targetDuration = null;
+                        playStartTime = null;
+                    }, targetDuration);
+                }
+            });
 
             await spotifyPlayer.connect();
         } catch (e) {
@@ -164,7 +188,11 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(playTimeout);
         await ensureActiveDevice();
         
-        // Reproducir desde el inicio - un solo call, simple y rápido
+        // Configurar la duración objetivo y resetear el start time
+        targetDuration = ms;
+        playStartTime = null;
+        
+        // Reproducir desde el inicio
         await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
             uris: [uri], 
             position_ms: 0 
@@ -173,14 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const playBtn = document.getElementById('playBtn');
         if (playBtn) playBtn.textContent = '❚❚';
         
-        // Pausar después del tiempo especificado
-        playTimeout = setTimeout(async () => {
-            try { 
-                await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); 
-            } catch (_) {}
-            const btn = document.getElementById('playBtn');
-            if (btn) btn.textContent = '▶';
-        }, ms);
+        // El listener 'player_state_changed' se encargará del timing exacto
+        // cuando detecte que realmente empezó a reproducir
     }
 
     // ---- SOUND EFFECTS ----
