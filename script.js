@@ -163,15 +163,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function playSpotifyClip(uri, ms) {
         clearTimeout(playTimeout);
         await ensureActiveDevice();
-        // iniciar reproducción en el dispositivo del SDK
-        await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { uris: [uri], position_ms: 0 });
+        
+        // Iniciar reproducción exactamente desde 0ms
+        const startTimestamp = Date.now();
+        await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
+            uris: [uri], 
+            position_ms: 0 
+        });
+        
         const playBtn = document.getElementById('playBtn');
         if (playBtn) playBtn.textContent = '❚❚';
+        
+        // Calcular el tiempo restante considerando la latencia de la API
+        const apiLatency = Date.now() - startTimestamp;
+        const adjustedDuration = Math.max(ms - apiLatency, ms * 0.9); // Mínimo 90% del tiempo solicitado
+        
         playTimeout = setTimeout(async () => {
-            try { await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); } catch (_) {}
+            try { 
+                await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`); 
+            } catch (_) {}
             const btn = document.getElementById('playBtn');
             if (btn) btn.textContent = '▶';
-        }, ms);
+        }, adjustedDuration);
     }
 
     // ---- SOUND EFFECTS ----
