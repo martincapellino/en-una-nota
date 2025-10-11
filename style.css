@@ -349,12 +349,13 @@ button:active {
     background: #F44336;
     color: white;
     border: none;
-    padding: 12px 30px;
-    font-size: 1.2rem;
+    padding: 12px 24px;
+    font-size: 1rem;
     font-weight: bold;
     border-radius: 25px;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     transition: all 0.3s ease;
+    white-space: nowrap;
 }
 
 .skip-button:hover {
@@ -369,11 +370,13 @@ button:active {
     justify-content: center;
     align-items: center;
     margin: 15px 0;
+    flex-wrap: nowrap;
 }
 
 .action-buttons .back-button {
-    padding: 12px 30px;
-    font-size: 1.2rem;
+    padding: 12px 24px;
+    font-size: 1rem;
+    white-space: nowrap;
     font-weight: bold;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
