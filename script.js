@@ -2,8 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- TUS PLAYLISTS DE SPOTIFY ----
     // Aquí están tus playlists configuradas
     const genres = {
-        "Kochi": "7v4y32dRRPqgENTN2T5xg1",
-        "En una Nota - TPL": "2kumFei7d5KRoI2fLFgu2G"
+        "Desafio Kochi: Quevedo": "1IaFDLfOGmJx9LH77iuMDt",
+        "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8"
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -751,6 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showGenreSelection();
     });
 });
+
 
 
 
