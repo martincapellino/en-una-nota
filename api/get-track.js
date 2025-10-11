@@ -105,15 +105,15 @@ module.exports = async (req, res) => {
         return sendJsonError(res, 400, 'Invalid Content-Type. Expected application/json');
     }
 
-    let { playlistId } = req.body || {};
+    let { playlistId, userToken } = req.body || {};
     if (!playlistId || typeof playlistId !== 'string') {
         return sendJsonError(res, 400, 'Missing or invalid playlistId');
     }
     playlistId = playlistId.trim();
 
     try {
-        // 1. Obtener token de Spotify
-        const token = await getSpotifyToken();
+        // 1. Usar token del usuario si viene, sino usar token del servidor
+        const token = userToken || await getSpotifyToken();
         
         // 2. Obtener canciones de la playlist
         const tracks = await fetchTracksFromSpotifyPlaylist(playlistId, token);
