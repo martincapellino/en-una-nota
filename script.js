@@ -332,10 +332,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     genreSelectionContainer.innerHTML = `<h2 class="loading-text">Buscando una canción en "${playlistName}"...</h2>`;
 
-                    fetch('/api/get-track', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ playlistId })
+                    getAccessToken().then(userToken => {
+                        return fetch('/api/get-track', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ playlistId, userToken })
+                        });
                     }).then(async response => {
                         if (!response.ok) {
                             let errorData = {};
@@ -374,10 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
             genreSelectionContainer.innerHTML = `<h2 class="loading-text">Buscando una canción en "${playlistName}"...</h2>`;
 
             try {
+                const userToken = await getAccessToken();
                 const response = await fetch('/api/get-track', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ playlistId })
+                    body: JSON.stringify({ playlistId, userToken })
                 });
 
                 if (!response.ok) {
@@ -674,10 +677,11 @@ document.addEventListener('DOMContentLoaded', () => {
         nextSongButton.disabled = true;
         
         try {
+            const userToken = await getAccessToken();
             const response = await fetch('/api/get-track', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playlistId: currentGenre.playlistId })
+                body: JSON.stringify({ playlistId: currentGenre.playlistId, userToken })
             });
 
             if (!response.ok) {
