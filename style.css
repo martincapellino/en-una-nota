@@ -288,7 +288,7 @@ button:active {
 .input-area { width: 100%; max-width: 400px; position: relative; }
 #guessInput { background: transparent; border: 2px solid white; color: white; padding: 15px; font-size: 1rem; width: 100%; text-align: center; border-radius: 8px; }
 #guessInput::placeholder { color: rgba(255, 255, 255, 0.7); }
-#feedback { font-size: 1.2rem; height: 50px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+#feedback { font-size: 1.2rem; min-height: 35px; font-weight: bold; display: flex; align-items: center; justify-content: center; margin: 8px 0; }
 .correct { color: #1DB954; }
 .incorrect { color: #F44336; }
 .hidden { display: none; }
@@ -369,7 +369,7 @@ button:active {
     gap: 15px;
     justify-content: center;
     align-items: center;
-    margin: 15px 0;
+    margin: 8px 0 15px 0;
     flex-wrap: nowrap;
 }
 
@@ -390,7 +390,7 @@ button:active {
     gap: 18px;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 25px;
 }
 
 .game-buttons .back-button {
