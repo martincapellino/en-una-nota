@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
                 <button class="mode-button" id="my-playlists-button">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
-                <button class="back-button" id="logout-button">Cerrar sesión</button>
+                <button class="logout-button" id="logout-button">Cerrar sesión</button>
                 ` : ''}
             </div>
         `;
@@ -369,6 +369,12 @@ document.addEventListener('DOMContentLoaded', () => {
             playlistClickHandler = (e) => {
                 const btn = e.target.closest('.genre-button');
                 if (btn && btn.hasAttribute('data-playlist-id')) {
+                    // Verificar que Spotify esté conectado antes de continuar
+                    if (!isSpotifyConnected || !spotifyDeviceId) {
+                        alert('Conectando con Spotify... Intentá de nuevo en un momento.');
+                        return;
+                    }
+                    
                     const card = btn.closest('.playlist-card');
                     const playlistName = card?.querySelector('.playlist-title')?.textContent || 'Mi playlist';
                     const playlistId = btn.getAttribute('data-playlist-id');
@@ -416,6 +422,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function handleGenreClick(event) {
         if (event.target.classList.contains('genre-button')) {
+            // Verificar que Spotify esté conectado antes de continuar
+            if (!isSpotifyConnected || !spotifyDeviceId) {
+                alert('Conectando con Spotify... Intentá de nuevo en un momento.');
+                return;
+            }
+            
             const playlistId = event.target.dataset.playlistId;
             const playlistName = event.target.innerText;
             currentGenre = { playlistId, playlistName };
@@ -478,8 +490,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="action-buttons">
                 <button id="skipBtn" class="skip-button">Dame más tiempo</button>
                 <button class="back-button" id="give-up-button">Me Rindo</button>
-            </div>
-            <div class="game-buttons">
                 <button class="back-button" id="next-song-button" style="display: none;">Siguiente Canción</button>
             </div>
         `;
