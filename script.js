@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const trackDurations = [500, 2000, 5000]; // 0.5s, 2s, 5s
     const blurLevels = [25, 15, 5, 0];
     let playTimeout = null;
-    let allTrackNames = []; // For the autocomplete suggestions
+    let allTracks = []; // Todas las canciones de la playlist actual para autocompletado
     let currentGenre = null; // Para recordar el género actual
     let playerScore = 0; // Sistema de puntos
     let currentSection = 'genres'; // Para recordar de dónde viene: 'genres' o 'myplaylists'
@@ -398,8 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             throw new Error(composed);
                         }
                         return response.json();
-                    }).then(track => {
-                        currentTrack = track;
+                    }).then(data => {
+                        currentTrack = data.track;
+                        allTracks = data.allTracks || [];
                         startGame();
                     }).catch(error => {
                         console.error("Error fetching the track:", error);
@@ -451,7 +452,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(composed);
                 }
                 
-                currentTrack = await response.json();
+                const data = await response.json();
+                currentTrack = data.track;
+                allTracks = data.allTracks || [];
                 startGame();
 
             } catch (error) {
@@ -533,8 +536,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Autocompletado inteligente
         guessInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim().toLowerCase();
-            if (query.length >= 2) {
+            const query = e.target.value.trim();
+            if (query.length >= 1) {
                 showSuggestions(query);
             } else {
                 hideSuggestions();
@@ -546,7 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const suggestions = document.querySelectorAll('.suggestion-item');
                 if (suggestions.length > 0 && document.querySelector('.suggestion-item.highlighted')) {
                     const highlighted = document.querySelector('.suggestion-item.highlighted');
-                    checkGuess(highlighted.textContent);
+                    // Usar el nombre original de la canción del data-attribute
+                    checkGuess(highlighted.dataset.original || highlighted.textContent);
                 } else {
                     checkGuess(e.target.value);
                 }
@@ -655,37 +659,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showSuggestions(query) {
         const suggestions = document.getElementById('suggestions');
-        const trackName = currentTrack.name.toLowerCase();
         
-        // Buscar coincidencias parciales
-        const matches = [];
-        const words = trackName.split(' ');
-        
-        for (let i = 0; i < words.length; i++) {
-            for (let j = i + 1; j <= words.length; j++) {
-                const substring = words.slice(i, j).join(' ');
-                if (substring.includes(query) && substring.length >= query.length) {
-                    matches.push({
-                        text: substring,
-                        score: substring.length - query.length // Menor score = mejor match
-                    });
-                }
-            }
+        if (!allTracks || allTracks.length === 0) {
+            hideSuggestions();
+            return;
         }
         
-        // Ordenar por score y tomar los mejores 5
-        matches.sort((a, b) => a.score - b.score);
-        const topMatches = matches.slice(0, 5).map(m => m.text);
+        // Buscar en todas las canciones de la playlist
+        const matches = [];
+        
+        allTracks.forEach(track => {
+            const songName = track.name.toLowerCase();
+            const artistName = track.artist.toLowerCase();
+            const queryLower = query.toLowerCase();
+            
+            let score = 0;
+            let matchText = '';
+            
+            // Scoring por relevancia (menor score = más relevante)
+            if (songName.startsWith(queryLower)) {
+                // Match exacto al inicio del nombre - MUY relevante
+                score = 1;
+                matchText = `${track.name} - ${track.artist}`;
+            } else if (songName.includes(' ' + queryLower)) {
+                // Match al inicio de una palabra en el nombre
+                score = 2;
+                matchText = `${track.name} - ${track.artist}`;
+            } else if (songName.includes(queryLower)) {
+                // Match en medio del nombre
+                score = 3;
+                matchText = `${track.name} - ${track.artist}`;
+            } else if (artistName.startsWith(queryLower)) {
+                // Match al inicio del artista
+                score = 4;
+                matchText = `${track.name} - ${track.artist}`;
+            } else if (artistName.includes(' ' + queryLower)) {
+                // Match al inicio de palabra del artista
+                score = 5;
+                matchText = `${track.name} - ${track.artist}`;
+            } else if (artistName.includes(queryLower)) {
+                // Match en medio del artista
+                score = 6;
+                matchText = `${track.name} - ${track.artist}`;
+            }
+            
+            if (score > 0) {
+                matches.push({
+                    text: matchText,
+                    originalName: track.name,
+                    score: score
+                });
+            }
+        });
+        
+        // Ordenar por score (menor primero) y tomar los mejores 8
+        matches.sort((a, b) => {
+            if (a.score !== b.score) return a.score - b.score;
+            // Si tienen el mismo score, ordenar alfabéticamente
+            return a.text.localeCompare(b.text);
+        });
+        
+        const topMatches = matches.slice(0, 8);
         
         if (topMatches.length > 0) {
             suggestions.innerHTML = topMatches.map((match, index) => 
-                `<div class="suggestion-item ${index === 0 ? 'highlighted' : ''}" data-text="${match}">${match}</div>`
+                `<div class="suggestion-item ${index === 0 ? 'highlighted' : ''}" data-original="${match.originalName}">${match.text}</div>`
             ).join('');
             
             // Agregar listeners a las sugerencias
             suggestions.querySelectorAll('.suggestion-item').forEach(item => {
                 item.addEventListener('click', () => {
-                    checkGuess(item.textContent);
+                    // Usar el nombre original de la canción para checkGuess
+                    checkGuess(item.dataset.original);
                 });
             });
         } else {
@@ -745,7 +790,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Error al obtener nueva canción');
             }
             
-            currentTrack = await response.json();
+            const data = await response.json();
+            currentTrack = data.track;
+            allTracks = data.allTracks || [];
             startGame(); // Reinicia el juego con la nueva canción
 
         } catch (error) {
