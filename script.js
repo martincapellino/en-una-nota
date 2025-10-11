@@ -241,12 +241,10 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         const dynBtn = document.getElementById('genres-button-dynamic');
         if (dynBtn) dynBtn.addEventListener('click', () => {
-            playSound('click');
             showGenreSelection();
         });
         const connectBtn = document.getElementById('connect-spotify-button');
         if (connectBtn) connectBtn.addEventListener('click', async () => {
-            playSound('click');
             // Verificar si ya hay sesión válida antes de limpiar
             const hasSession = localStorage.getItem('spotify_refresh_token');
             if (hasSession && spotifyUser) {
@@ -260,13 +258,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const myPlaylistsBtn = document.getElementById('my-playlists-button');
         if (myPlaylistsBtn) {
             myPlaylistsBtn.onclick = () => {
-                playSound('click');
                 showMyPlaylists();
             };
         }
         const logoutBtn = document.getElementById('logout-button');
         if (logoutBtn) logoutBtn.addEventListener('click', async () => {
-            playSound('click');
             try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
             localStorage.removeItem('spotify_refresh_token');
             // resetear SDK/estado
@@ -291,7 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         document.getElementById('back-to-menu-button').addEventListener('click', () => {
-            playSound('click');
             initializeMenu();
         });
         document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
@@ -325,13 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div id="my-playlists-grid">${cards || '<p class="loading-text">No se encontraron playlists.</p>'}</div>
             `;
             document.getElementById('back-to-menu-button').addEventListener('click', () => {
-                playSound('click');
                 initializeMenu();
             });
             genreSelectionContainer.addEventListener('click', (e) => {
                 const btn = e.target.closest('.genre-button');
                 if (btn && btn.hasAttribute('data-playlist-id')) {
-                    playSound('click');
                     const card = btn.closest('.playlist-card');
                     const playlistName = card?.querySelector('.playlist-title')?.textContent || 'Mi playlist';
                     const playlistId = btn.getAttribute('data-playlist-id');
@@ -374,7 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function handleGenreClick(event) {
         if (event.target.classList.contains('genre-button')) {
-            playSound('click');
             const playlistId = event.target.dataset.playlistId;
             const playlistName = event.target.innerText;
             currentGenre = { playlistId, playlistName };
@@ -432,12 +424,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN" autocomplete="off">
                 <div id="suggestions" class="suggestions-container"></div>
             </div>
-            <button id="skipBtn" class="skip-button">Dame más tiempo</button>
+            <div class="action-buttons">
+                <button id="skipBtn" class="skip-button">Dame más tiempo</button>
+                <button class="back-button" id="give-up-button">Me Rindo</button>
+            </div>
             <p id="feedback"></p>
             <div class="game-buttons">
                 <button class="back-button" id="next-song-button" style="display: none;">Siguiente Canción</button>
-                <button class="back-button" id="give-up-button">Me Rindo</button>
-                <button class="back-button" id="back-to-genres-button">Volver</button>
             </div>
         `;
 
@@ -453,12 +446,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const guessInput = document.getElementById('guessInput');
         const giveUpButton = document.getElementById('give-up-button');
         const nextSongButton = document.getElementById('next-song-button');
-        const backToGenresButton = document.getElementById('back-to-genres-button');
         const backFromGameButton = document.getElementById('back-from-game-button');
         
         if (backFromGameButton) {
             backFromGameButton.addEventListener('click', () => {
-                playSound('click');
                 if (currentSection === 'myplaylists') {
                     showMyPlaylists();
                 } else {
@@ -468,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         playBtn.addEventListener('click', async () => {
-            playSound('click');
             if (!isSpotifyConnected || !spotifyDeviceId) {
                 alert('Primero conectá Spotify (botón en el menú).');
                 return;
@@ -477,7 +467,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try { await playSpotifyClip(currentTrack.uri, duration); } catch (e) { console.error(e); }
         });
         skipBtn.addEventListener('click', () => {
-            playSound('click');
             handleSkip();
         });
         volumeSlider.addEventListener('input', (e) => { if (spotifyPlayer && spotifyPlayer.setVolume) spotifyPlayer.setVolume(e.target.value / 100); });
@@ -513,20 +502,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         giveUpButton.addEventListener('click', () => {
-            playSound('click');
             giveUp();
         });
         nextSongButton.addEventListener('click', () => {
-            playSound('click');
             nextSong();
-        });
-        backToGenresButton.addEventListener('click', () => {
-            playSound('click');
-            if (currentSection === 'myplaylists') {
-                showMyPlaylists();
-            } else {
-                showGenreSelection();
-            }
         });
     }
 
@@ -749,7 +728,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 800);
     if (genresButton) genresButton.addEventListener('click', () => {
-        playSound('click');
         showGenreSelection();
     });
 });
