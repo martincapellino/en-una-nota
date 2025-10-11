@@ -144,6 +144,23 @@ button:active {
     color: #1DB954;
 }
 
+.logout-button {
+    background: transparent;
+    border: 2px solid #F44336;
+    color: #F44336;
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-top: 30px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.logout-button:hover {
+    background: #F44336;
+    color: #0a0a0a;
+    border-color: #F44336;
+}
+
 .back-arrow-button {
     position: absolute;
     top: 15px;
@@ -174,6 +191,7 @@ button:active {
     display: none;
     width: 100%;
     text-align: center;
+    position: relative;
 }
 
 .screen.active {
@@ -394,28 +412,17 @@ button:active {
     background: #3a3a3a;
 }
 
-/* --- Game Buttons --- */
-.game-buttons {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 20px;
-}
-
-.game-buttons .back-button {
-    padding: 14px 24px;
-    font-size: 1rem;
-    font-weight: 700;
+.action-buttons #next-song-button {
     background: #1DB954;
+    border-color: #1DB954;
     color: #0a0a0a;
-    border: none;
-    border-radius: 8px;
 }
 
-.game-buttons .back-button:hover {
+.action-buttons #next-song-button:hover {
     background: #1ed760;
+    border-color: #1ed760;
 }
+
 
 /* --- Playlists Grid --- */
 #my-playlists-grid {
