@@ -443,11 +443,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" id="guessInput" placeholder="INTRODUCIR CANCIÓN" autocomplete="off">
                 <div id="suggestions" class="suggestions-container"></div>
             </div>
+            <p id="feedback"></p>
             <div class="action-buttons">
                 <button id="skipBtn" class="skip-button">Dame más tiempo</button>
                 <button class="back-button" id="give-up-button">Me Rindo</button>
             </div>
-            <p id="feedback"></p>
             <div class="game-buttons">
                 <button class="back-button" id="next-song-button" style="display: none;">Siguiente Canción</button>
             </div>
@@ -751,7 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showGenreSelection();
     });
 });
-
 
 
 
