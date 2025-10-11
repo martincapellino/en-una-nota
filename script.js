@@ -240,11 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         const dynBtn = document.getElementById('genres-button-dynamic');
-        if (dynBtn) dynBtn.addEventListener('click', () => {
+        if (dynBtn) dynBtn.onclick = () => {
             showGenreSelection();
-        });
+        };
         const connectBtn = document.getElementById('connect-spotify-button');
-        if (connectBtn) connectBtn.addEventListener('click', async () => {
+        if (connectBtn) connectBtn.onclick = async () => {
             // Verificar si ya hay sesión válida antes de limpiar
             const hasSession = localStorage.getItem('spotify_refresh_token');
             if (hasSession && spotifyUser) {
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // No hay sesión, limpiar y redirigir a login
                 connectSpotify(true);
             }
-        });
+        };
         const myPlaylistsBtn = document.getElementById('my-playlists-button');
         if (myPlaylistsBtn) {
             myPlaylistsBtn.onclick = () => {
@@ -262,14 +262,14 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
         const logoutBtn = document.getElementById('logout-button');
-        if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+        if (logoutBtn) logoutBtn.onclick = async () => {
             try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
             localStorage.removeItem('spotify_refresh_token');
             // resetear SDK/estado
             try { if (spotifyPlayer) { await spotifyPlayer.disconnect(); } } catch (_) {}
             spotifyPlayer = null; spotifyDeviceId = null; isSpotifyConnected = false; spotifyUser = null; renderUserBadge();
             initializeMenu();
-        });
+        };
         showScreen(menuContainer);
     }
 
@@ -286,12 +286,18 @@ document.addEventListener('DOMContentLoaded', () => {
             <div id="genre-buttons">${genreButtonsHTML}</div>
         `;
 
-        document.getElementById('back-to-menu-button').addEventListener('click', () => {
+        document.getElementById('back-to-menu-button').onclick = () => {
             initializeMenu();
-        });
-        document.getElementById('genre-buttons').addEventListener('click', handleGenreClick);
+        };
+        
+        // Usar onclick para evitar listeners duplicados
+        const genreButtons = document.getElementById('genre-buttons');
+        genreButtons.onclick = handleGenreClick;
         showScreen(genreSelectionContainer);
     }
+
+    // Handler para clicks en playlists (función nombrada para poder remover)
+    let playlistClickHandler = null;
 
     async function showMyPlaylists() {
         if (isLoadingPlaylists) return;
@@ -319,10 +325,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h2>MIS PLAYLISTS</h2>
                 <div id="my-playlists-grid">${cards || '<p class="loading-text">No se encontraron playlists.</p>'}</div>
             `;
-            document.getElementById('back-to-menu-button').addEventListener('click', () => {
+            document.getElementById('back-to-menu-button').onclick = () => {
                 initializeMenu();
-            });
-            genreSelectionContainer.addEventListener('click', (e) => {
+            };
+            
+            // Remover listener anterior si existe
+            if (playlistClickHandler) {
+                genreSelectionContainer.removeEventListener('click', playlistClickHandler);
+            }
+            
+            // Crear nuevo handler
+            playlistClickHandler = (e) => {
                 const btn = e.target.closest('.genre-button');
                 if (btn && btn.hasAttribute('data-playlist-id')) {
                     const card = btn.closest('.playlist-card');
@@ -357,7 +370,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         showMyPlaylists();
                     });
                 }
-            });
+            };
+            
+            // Agregar nuevo listener
+            genreSelectionContainer.addEventListener('click', playlistClickHandler);
             showScreen(genreSelectionContainer);
         } catch (e) {
             console.error('Error obteniendo playlists', e);
