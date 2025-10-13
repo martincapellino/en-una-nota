@@ -96,26 +96,12 @@ button:active {
 }
 
 .spotify-logo {
-    width: 20px;
-    height: 20px;
-    display: inline-block;
-    border-radius: 50%;
-    background: #0a0a0a;
-    position: relative;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-
-.spotify-logo::before,
-.spotify-logo::after {
-    content: '';
-    position: absolute;
-    left: 4px;
-    right: 4px;
-    height: 2px;
-    background: #1DB954;
-    border-radius: 2px;
-}
-.spotify-logo::before { top: 6px; box-shadow: 0 5px 0 #1DB954; }
-.spotify-logo::after { top: 11px; }
 
 .mode-button.disabled {
     background: #1a1a1a;
@@ -221,6 +207,57 @@ button:active {
     color: #1DB954; 
     font-weight: 700; 
     height: 30px; 
+}
+
+/* --- Hide Cover Toggle --- */
+.hide-cover-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #1DB954;
+}
+
+.toggle-label input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.toggle-text {
+    color: #999999;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.toggle-label:hover .toggle-text {
+    color: #1DB954;
+}
+
+.toggle-label:has(input:disabled):hover .toggle-text {
+    color: #999999;
+}
+
+.toggle-label input[type="checkbox"]:checked ~ .toggle-text {
+    color: #1DB954;
+}
+
+.toggle-label input[type="checkbox"]:disabled ~ .toggle-text {
+    opacity: 0.5;
 }
 
 .controls-area { 
