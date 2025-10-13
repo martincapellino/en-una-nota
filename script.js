@@ -221,20 +221,36 @@ document.addEventListener('DOMContentLoaded', () => {
         targetDuration = ms;
         playStartTime = null;
         
-        // Verificar que esté en posición 0 antes de reproducir
+        // Verificar que la canción correcta esté cargada y en posición 0
         try {
             const state = await spotifyPlayer.getCurrentState();
-            if (state && state.position > 50) {
-                // Si no está cerca de 0, hacer seek a 0
+            const currentUri = state?.track_window?.current_track?.uri;
+            const needsReload = !state || currentUri !== uri || state.position > 100;
+            
+            if (needsReload) {
+                // Cargar la canción correcta desde 0:00
+                await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
+                    uris: [uri], 
+                    position_ms: 0 
+                });
+            } else if (state.position > 10) {
+                // La canción correcta está cargada pero no en 0, hacer seek
                 await spotifyApi('PUT', `/me/player/seek?position_ms=0&device_id=${encodeURIComponent(spotifyDeviceId)}`);
-                await new Promise(resolve => setTimeout(resolve, 50)); // Pequeña espera
+                await new Promise(resolve => setTimeout(resolve, 50));
+                // Reanudar
+                await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`);
+            } else {
+                // Todo está bien, solo reanudar
+                await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`);
             }
         } catch (e) {
-            console.warn('No se pudo verificar posición:', e.message);
+            console.warn('Error verificando estado, cargando canción:', e.message);
+            // Fallback: cargar la canción desde 0
+            await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
+                uris: [uri], 
+                position_ms: 0 
+            });
         }
-        
-        // Reanudar reproducción (la canción ya está cargada en 0:00)
-        await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`);
         
         const playBtn = document.getElementById('playBtn');
         if (playBtn) playBtn.textContent = '❚❚';
@@ -530,7 +546,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("Error fetching the track:", error);
                 alert(`Hubo un error al buscar la canción: ${error.message}`);
-                showGenreSelection(); 
+                // Volver a la sección correcta según de dónde venía
+                if (currentSection === 'artists') {
+                    showArtistSelection();
+                } else {
+                    showGenreSelection();
+                }
             }
         }
     }
