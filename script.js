@@ -6,6 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
         "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8"
     };
 
+    // Playlists de artistas
+    const artists = {
+        "Duki": "37i9dQZF1DXe1ikyKZnRtc",
+        "Kanye West": "37i9dQZF1DZ06evO3nMr04"
+    };
+
     // ---- DOM ELEMENT REFERENCES ----
     const appContainer = document.getElementById('app-container');
     const menuContainer = document.getElementById('menu-container');
@@ -23,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allTracks = []; // Todas las canciones de la playlist actual para autocompletado
     let currentGenre = null; // Para recordar el género actual
     let playerScore = 0; // Sistema de puntos
-    let currentSection = 'genres'; // Para recordar de dónde viene: 'genres' o 'myplaylists'
+    let currentSection = 'genres'; // Para recordar de dónde viene: 'genres', 'artists' o 'myplaylists'
     let isLoadingPlaylists = false; // Evitar cargas múltiples
 
     // ---- SPOTIFY WEB PLAYBACK SDK ----
@@ -266,6 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="mode-button disabled">DESAFÍO DIARIO</button>
                 <button class="mode-button" id="my-playlists-button">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
+                <button class="mode-button" id="artists-button-dynamic">ARTISTAS</button>
                 <button class="logout-button" id="logout-button">Cerrar sesión</button>
                 ` : ''}
             </div>
@@ -273,6 +280,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const dynBtn = document.getElementById('genres-button-dynamic');
         if (dynBtn) dynBtn.onclick = () => {
             showGenreSelection();
+        };
+        const artistsBtn = document.getElementById('artists-button-dynamic');
+        if (artistsBtn) artistsBtn.onclick = () => {
+            showArtistSelection();
         };
         const connectBtn = document.getElementById('connect-spotify-button');
         if (connectBtn) connectBtn.onclick = async () => {
@@ -324,6 +335,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Usar onclick para evitar listeners duplicados
         const genreButtons = document.getElementById('genre-buttons');
         genreButtons.onclick = handleGenreClick;
+        showScreen(genreSelectionContainer);
+    }
+
+    function showArtistSelection() {
+        currentSection = 'artists';
+        let artistButtonsHTML = '';
+        for (const [name, id] of Object.entries(artists)) {
+            artistButtonsHTML += `<button class="genre-button" data-playlist-id="${id}">${name.toUpperCase()}</button>`;
+        }
+
+        genreSelectionContainer.innerHTML = `
+            <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
+            <h2>ELEGÍ UN ARTISTA</h2>
+            <div id="genre-buttons">${artistButtonsHTML}</div>
+        `;
+
+        document.getElementById('back-to-menu-button').onclick = () => {
+            initializeMenu();
+        };
+        
+        // Usar onclick para evitar listeners duplicados
+        const artistButtons = document.getElementById('genre-buttons');
+        artistButtons.onclick = handleGenreClick;
         showScreen(genreSelectionContainer);
     }
 
@@ -515,6 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
             backFromGameButton.addEventListener('click', () => {
                 if (currentSection === 'myplaylists') {
                     showMyPlaylists();
+                } else if (currentSection === 'artists') {
+                    showArtistSelection();
                 } else {
                     showGenreSelection();
                 }
@@ -648,8 +684,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('albumArt').style.filter = 'none';
         document.getElementById('guessInput').disabled = true;
-        giveUpButton.textContent = currentSection === 'myplaylists' ? 'Elegir Otra Playlist' : 'Elegir Otro Género';
-        giveUpButton.onclick = currentSection === 'myplaylists' ? showMyPlaylists : showGenreSelection;
+        
+        if (currentSection === 'myplaylists') {
+            giveUpButton.textContent = 'Elegir Otra Playlist';
+            giveUpButton.onclick = showMyPlaylists;
+        } else if (currentSection === 'artists') {
+            giveUpButton.textContent = 'Elegir Otro Artista';
+            giveUpButton.onclick = showArtistSelection;
+        } else {
+            giveUpButton.textContent = 'Elegir Otro Género';
+            giveUpButton.onclick = showGenreSelection;
+        }
+        
         nextSongButton.style.display = 'inline-block';
     }
 
