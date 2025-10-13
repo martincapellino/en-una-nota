@@ -191,28 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (existing) existing.outerHTML = html; else document.body.insertAdjacentHTML('afterbegin', html);
     }
 
-    async function preloadTrack() {
-        if (!isSpotifyConnected || !spotifyDeviceId || !currentTrack) return;
-        
-        try {
-            await ensureActiveDevice();
-            
-            // Cargar la canción y posicionarla en 0:00
-            await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
-                uris: [currentTrack.uri], 
-                position_ms: 0 
-            });
-            
-            // Pausar inmediatamente para que quede lista en 0:00
-            await new Promise(resolve => setTimeout(resolve, 100)); // Pequeña espera para que cargue
-            await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`);
-            
-            console.log('✅ Canción pre-cargada en 0:00');
-        } catch (e) {
-            console.warn('Pre-carga falló, se usará método normal:', e.message);
-        }
-    }
-
     async function playSpotifyClip(uri, ms) {
         clearTimeout(playTimeout);
         await ensureActiveDevice();
@@ -221,36 +199,11 @@ document.addEventListener('DOMContentLoaded', () => {
         targetDuration = ms;
         playStartTime = null;
         
-        // Verificar que la canción correcta esté cargada y en posición 0
-        try {
-            const state = await spotifyPlayer.getCurrentState();
-            const currentUri = state?.track_window?.current_track?.uri;
-            const needsReload = !state || currentUri !== uri || state.position > 100;
-            
-            if (needsReload) {
-                // Cargar la canción correcta desde 0:00
-                await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
-                    uris: [uri], 
-                    position_ms: 0 
-                });
-            } else if (state.position > 10) {
-                // La canción correcta está cargada pero no en 0, hacer seek
-                await spotifyApi('PUT', `/me/player/seek?position_ms=0&device_id=${encodeURIComponent(spotifyDeviceId)}`);
-                await new Promise(resolve => setTimeout(resolve, 50));
-                // Reanudar
-                await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`);
-            } else {
-                // Todo está bien, solo reanudar
-                await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`);
-            }
-        } catch (e) {
-            console.warn('Error verificando estado, cargando canción:', e.message);
-            // Fallback: cargar la canción desde 0
-            await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
-                uris: [uri], 
-                position_ms: 0 
-            });
-        }
+        // Reproducir desde el inicio
+        await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
+            uris: [uri], 
+            position_ms: 0 
+        });
         
         const playBtn = document.getElementById('playBtn');
         if (playBtn) playBtn.textContent = '❚❚';
@@ -557,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---- GAME LOGIC ----
-    async function startGame() {
+    function startGame() {
         currentAttempt = 0;
         
         gameContainer.innerHTML = `
@@ -597,9 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupGameListeners();
         updateBlur();
         showScreen(gameContainer);
-        
-        // Pre-cargar la canción en pausa desde 0:00 para reproducción instantánea
-        await preloadTrack();
     }
 
     function setupGameListeners() {
@@ -689,20 +639,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reproducción ahora gestionada por Spotify Web Playback SDK
 
-    async function handleSkip() {
+    function handleSkip() {
         // Funciona como un intento fallido
         const feedback = document.getElementById('feedback');
         feedback.textContent = 'Dando más tiempo...';
         feedback.className = 'incorrect';
-        
-        // Pausar si está reproduciendo
-        try {
-            await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`);
-            const playBtn = document.getElementById('playBtn');
-            if (playBtn) playBtn.textContent = '▶';
-        } catch (e) {
-            console.warn('Error pausando:', e.message);
-        }
         
         currentAttempt++;
         if (currentAttempt >= trackDurations.length) {
@@ -715,13 +656,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Limpiar input y sugerencias
             document.getElementById('guessInput').value = '';
             hideSuggestions();
-            
-            // Volver a posicionar en 0:00 y pausar para el próximo intento
-            await preloadTrack();
         }
     }
 
-    async function checkGuess(guess) {
+    function checkGuess(guess) {
         const feedback = document.getElementById('feedback');
         const normalizedGuess = guess.trim().toLowerCase();
         const normalizedAnswer = currentTrack.name.toLowerCase();
@@ -741,16 +679,6 @@ document.addEventListener('DOMContentLoaded', () => {
             feedback.textContent = 'INCORRECTO...';
             feedback.className = 'incorrect';
             playSound('error');
-            
-            // Pausar si está reproduciendo
-            try {
-                await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`);
-                const playBtn = document.getElementById('playBtn');
-                if (playBtn) playBtn.textContent = '▶';
-            } catch (e) {
-                console.warn('Error pausando:', e.message);
-            }
-            
             currentAttempt++;
             if (currentAttempt >= trackDurations.length) {
                 endGame(false);
@@ -758,9 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateBlur();
                 const nextDuration = (trackDurations[currentAttempt] / 1000).toFixed(1);
                 document.getElementById('trackTimer').textContent = `${nextDuration}s`;
-                
-                // Volver a posicionar en 0:00 y pausar para el próximo intento
-                await preloadTrack();
             }
         }
         hideSuggestions();
