@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Aquí están tus playlists configuradas
     const genres = {
         "Desafio Kochi: Quevedo": "1IaFDLfOGmJx9LH77iuMDt",
-        "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8"
-        "Trips amor": "048rzSoDjd1NO3X7xu0dkg"
+        "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8",
+        "Trips amor": "048rzSoDjd1NO3X7xu0dkg",
         "En Una Nota": "2kumFei7d5KRoI2fLFgu2G"
         
     };
@@ -923,6 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showGenreSelection();
     });
 });
+
 
 
 
