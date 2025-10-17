@@ -539,21 +539,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const topTracksResponse = await spotifyApi('GET', `/artists/${artistId}/top-tracks?market=ES`);
             const topTracks = topTracksResponse.tracks || [];
             
-            // También obtener álbumes del artista para más variedad
-            const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=50&include_groups=album,single`);
-            const albums = albumsResponse.items || [];
+            // Obtener TODOS los álbumes del artista
+            let allAlbums = [];
+            let offset = 0;
+            const limit = 50;
             
-            // Obtener tracks de más álbumes hasta llegar a 100 canciones máximo
+            // Paginación para obtener todos los álbumes
+            while (true) {
+                const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=${limit}&offset=${offset}&include_groups=album,single`);
+                const albums = albumsResponse.items || [];
+                allAlbums = allAlbums.concat(albums);
+                
+                if (!albumsResponse.next || albums.length < limit) break;
+                offset += limit;
+            }
+            
+            console.log(`📀 Total de álbumes encontrados: ${allAlbums.length}`);
+            
+            // Obtener tracks de TODOS los álbumes
             let additionalTracks = [];
-            const maxAlbums = Math.min(10, albums.length); // Hasta 10 álbumes
-            const maxTotalTracks = 100; // Límite máximo de 100 canciones
             
-            for (let i = 0; i < maxAlbums && additionalTracks.length < maxTotalTracks; i++) {
+            for (let i = 0; i < allAlbums.length; i++) {
                 try {
                     // Obtener información completa del álbum (incluyendo imágenes)
-                    const albumInfoResponse = await spotifyApi('GET', `/albums/${albums[i].id}?market=ES`);
-                    const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=50`);
-                    const albumTracks = albumTracksResponse.items || [];
+                    const albumInfoResponse = await spotifyApi('GET', `/albums/${allAlbums[i].id}?market=ES`);
+                    
+                    // Obtener TODOS los tracks del álbum con paginación
+                    let albumTracks = [];
+                    let trackOffset = 0;
+                    const trackLimit = 50;
+                    
+                    while (true) {
+                        const albumTracksResponse = await spotifyApi('GET', `/albums/${allAlbums[i].id}/tracks?market=ES&limit=${trackLimit}&offset=${trackOffset}`);
+                        const tracks = albumTracksResponse.items || [];
+                        albumTracks = albumTracks.concat(tracks);
+                        
+                        if (!albumTracksResponse.next || tracks.length < trackLimit) break;
+                        trackOffset += trackLimit;
+                    }
                     
                     // Agregar información del álbum a cada track
                     const tracksWithAlbumInfo = albumTracks.map(track => ({
@@ -565,26 +588,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }));
                     
                     additionalTracks = additionalTracks.concat(tracksWithAlbumInfo);
-                    console.log(`📀 Álbum ${i+1}/${maxAlbums}: ${albums[i].name} - ${albumTracks.length} tracks (Total: ${additionalTracks.length})`);
+                    console.log(`📀 Álbum ${i+1}/${allAlbums.length}: ${allAlbums[i].name} - ${albumTracks.length} tracks (Total: ${additionalTracks.length})`);
                     
-                    // Si ya tenemos suficientes tracks, parar
-                    if (additionalTracks.length >= maxTotalTracks) {
-                        console.log(`🎵 Límite de ${maxTotalTracks} canciones alcanzado`);
-                        break;
-                    }
                 } catch (error) {
-                    console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
+                    console.warn(`Error obteniendo tracks del álbum ${allAlbums[i].name}:`, error);
                 }
             }
             
-            // Combinar top tracks con tracks de álbumes y limitar a 100 máximo
-            const allTracksCombined = [...topTracks, ...additionalTracks].filter(track => {
+            // Combinar top tracks con tracks de álbumes (SIN LÍMITE)
+            const artistTracks = [...topTracks, ...additionalTracks].filter(track => {
                 // Filtrar tracks que no tengan las propiedades básicas necesarias
                 return track && track.name && track.uri && track.artists && track.artists.length > 0;
             });
-            
-            // Limitar a máximo 100 canciones
-            const artistTracks = allTracksCombined.slice(0, 100);
             
             console.log(`🎵 Total tracks cargados: ${artistTracks.length} (${topTracks.length} top tracks + ${additionalTracks.length} de álbumes)`);
             
@@ -645,6 +660,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log('🎵 Track seleccionado:', currentTrack);
             console.log('🖼️ Album art URL:', currentTrack.album_art);
+            
+            // Restaurar el texto original
+            document.getElementById('my-playlists-grid').innerHTML = `
+                <div style="text-align: center; margin: 40px 0;">
+                    <div style="font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
+                </div>
+            `;
             
             startGame();
             
