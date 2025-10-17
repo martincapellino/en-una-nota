@@ -362,9 +362,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="text" id="artist-search-input" placeholder="Buscar artista..." autocomplete="off">
                     <div id="artist-suggestions" class="suggestions-container"></div>
                 </div>
-            <div id="my-playlists-grid">
-                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700; display: flex; align-items: center; justify-content: center; min-height: 200px;">Elige un artista para jugar</div>
-            </div>
+                <div style="text-align: center; margin: 40px 0;">
+                    <div style="font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
+                </div>
+                <div id="my-playlists-grid"></div>
             `;
 
             document.getElementById('back-to-menu-button').onclick = () => {
@@ -530,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Mostrar loading
         document.getElementById('my-playlists-grid').innerHTML = `
-            <div class="loading-text">Obteniendo top tracks de ${artistName}...</div>
+            <div class="loading-text" style="text-align: center; font-size: 1.1rem; color: #1DB954; font-weight: 600; margin: 20px 0;">Buscando canciones de ${artistName}...</div>
         `;
         
         try {
@@ -542,11 +543,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=50&include_groups=album,single`);
             const albums = albumsResponse.items || [];
             
-            // Obtener tracks de más álbumes para máxima variedad
+            // Obtener tracks de más álbumes hasta llegar a 100 canciones máximo
             let additionalTracks = [];
-            const maxAlbums = Math.min(10, albums.length); // Obtener hasta 10 álbumes
+            const maxAlbums = Math.min(10, albums.length); // Hasta 10 álbumes
+            const maxTotalTracks = 100; // Límite máximo de 100 canciones
             
-            for (let i = 0; i < maxAlbums; i++) {
+            for (let i = 0; i < maxAlbums && additionalTracks.length < maxTotalTracks; i++) {
                 try {
                     // Obtener información completa del álbum (incluyendo imágenes)
                     const albumInfoResponse = await spotifyApi('GET', `/albums/${albums[i].id}?market=ES`);
@@ -563,17 +565,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }));
                     
                     additionalTracks = additionalTracks.concat(tracksWithAlbumInfo);
-                    console.log(`📀 Álbum ${i+1}/${maxAlbums}: ${albums[i].name} - ${albumTracks.length} tracks`);
+                    console.log(`📀 Álbum ${i+1}/${maxAlbums}: ${albums[i].name} - ${albumTracks.length} tracks (Total: ${additionalTracks.length})`);
+                    
+                    // Si ya tenemos suficientes tracks, parar
+                    if (additionalTracks.length >= maxTotalTracks) {
+                        console.log(`🎵 Límite de ${maxTotalTracks} canciones alcanzado`);
+                        break;
+                    }
                 } catch (error) {
                     console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
                 }
             }
             
-            // Combinar top tracks con tracks de álbumes
-            const artistTracks = [...topTracks, ...additionalTracks].filter(track => {
+            // Combinar top tracks con tracks de álbumes y limitar a 100 máximo
+            const allTracksCombined = [...topTracks, ...additionalTracks].filter(track => {
                 // Filtrar tracks que no tengan las propiedades básicas necesarias
                 return track && track.name && track.uri && track.artists && track.artists.length > 0;
             });
+            
+            // Limitar a máximo 100 canciones
+            const artistTracks = allTracksCombined.slice(0, 100);
             
             console.log(`🎵 Total tracks cargados: ${artistTracks.length} (${topTracks.length} top tracks + ${additionalTracks.length} de álbumes)`);
             
@@ -643,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Volver a la búsqueda
             document.getElementById('my-playlists-grid').innerHTML = `
-                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700; display: flex; align-items: center; justify-content: center; min-height: 200px;">Elige un artista para jugar</div>
+                <div class="loading-text" style="text-align: center; font-size: 1.1rem; color: #1DB954; font-weight: 600; margin: 20px 0;">Elige un artista para jugar</div>
             `;
         }
     }
