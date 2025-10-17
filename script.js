@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Playlists de artistas (usar IDs válidos de playlists públicas de Spotify)
     const artists = {
-        "Duki": "37i9dQZF1DX8tPJOYale3D", // This Is Duki
-        "Kanye West": "37i9dQZF1DZ06evO3nMr04" // This Is Kanye West
+        "Duki": "37i9dQZF1DX4sWSpwq3LiO", // Top Tracks de Duki
+        "Kanye West": "37i9dQZF1DZ06evO3nMr04" // Top Tracks de Kanye West
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -507,10 +507,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const playlistName = event.target.innerText;
             currentGenre = { playlistId, playlistName };
             
+            console.log('🎵 Intentando cargar playlist:', { playlistId, playlistName, currentSection });
+            
             genreSelectionContainer.innerHTML = `<h2 class="loading-text">Buscando una canción en "${playlistName}"...</h2>`;
 
             try {
                 const userToken = await getAccessToken();
+                console.log('🔑 Token obtenido, enviando request...');
+                
                 const response = await fetch('/api/get-track', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -518,8 +522,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
+                    console.error('❌ Error en response:', response.status, response.statusText);
                     let errorData = {};
                     try { errorData = await response.json(); } catch (_) { /* ignore parse error */ }
+                    console.error('❌ Error data:', errorData);
                     const baseMsg = errorData?.error || 'Server function returned an error';
                     const details = errorData?.details ? (typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details)) : '';
                     const composed = details ? `${baseMsg} | details: ${details}` : baseMsg;
