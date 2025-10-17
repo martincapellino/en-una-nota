@@ -548,9 +548,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             for (let i = 0; i < maxAlbums; i++) {
                 try {
+                    // Obtener información completa del álbum (incluyendo imágenes)
+                    const albumInfoResponse = await spotifyApi('GET', `/albums/${albums[i].id}?market=ES`);
                     const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=50`);
                     const albumTracks = albumTracksResponse.items || [];
-                    additionalTracks = additionalTracks.concat(albumTracks);
+                    
+                    // Agregar información del álbum a cada track
+                    const tracksWithAlbumInfo = albumTracks.map(track => ({
+                        ...track,
+                        album: {
+                            ...albumInfoResponse,
+                            images: albumInfoResponse.images || []
+                        }
+                    }));
+                    
+                    additionalTracks = additionalTracks.concat(tracksWithAlbumInfo);
                     console.log(`📀 Álbum ${i+1}/${maxAlbums}: ${albums[i].name} - ${albumTracks.length} tracks`);
                 } catch (error) {
                     console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
@@ -575,14 +587,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: `Top Tracks - ${artistName}`,
                 tracks: artistTracks.map(track => {
                     try {
-                        // Validar que el track tenga las propiedades necesarias
-                        const albumArt = (track.album && track.album.images && track.album.images[0]) 
+                        // Obtener imagen del álbum
+                        const albumArt = (track.album && track.album.images && track.album.images.length > 0) 
                             ? track.album.images[0].url 
                             : '';
                         
                         const artistName = (track.artists && track.artists.length > 0)
                             ? track.artists.map(a => a.name).join(', ')
                             : 'Artista desconocido';
+                        
+                        console.log(`🎵 Track: ${track.name} | Album: ${track.album?.name || 'N/A'} | Art: ${albumArt ? '✅' : '❌'}`);
                         
                         return {
                             name: track.name || 'Canción sin nombre',
@@ -592,7 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         };
                     } catch (error) {
                         console.warn('Error procesando track:', track, error);
-                        // Retornar un track básico si hay error
                         return {
                             name: track.name || 'Canción sin nombre',
                             artist: 'Artista desconocido',
