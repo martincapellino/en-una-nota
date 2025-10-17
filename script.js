@@ -362,9 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="text" id="artist-search-input" placeholder="Buscar artista..." autocomplete="off">
                     <div id="artist-suggestions" class="suggestions-container"></div>
                 </div>
-                <div id="my-playlists-grid">
-                    <div class="loading-text">Busca un artista para empezar...</div>
-                </div>
+            <div id="my-playlists-grid">
+                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
+            </div>
             `;
 
             document.getElementById('back-to-menu-button').onclick = () => {
@@ -534,19 +534,38 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         
         try {
-            // Obtener top tracks del artista
+            // Obtener top tracks del artista (máximo 50)
             const topTracksResponse = await spotifyApi('GET', `/artists/${artistId}/top-tracks?market=ES`);
             const topTracks = topTracksResponse.tracks || [];
             
-            if (topTracks.length === 0) {
+            // También obtener álbumes del artista para más variedad
+            const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=20&include_groups=album,single`);
+            const albums = albumsResponse.items || [];
+            
+            // Obtener tracks de los álbumes más populares
+            let additionalTracks = [];
+            for (let i = 0; i < Math.min(3, albums.length); i++) {
+                try {
+                    const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=20`);
+                    const albumTracks = albumTracksResponse.items || [];
+                    additionalTracks = additionalTracks.concat(albumTracks);
+                } catch (error) {
+                    console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
+                }
+            }
+            
+            // Combinar top tracks con tracks de álbumes
+            const allTracks = [...topTracks, ...additionalTracks];
+            
+            if (allTracks.length === 0) {
                 throw new Error('No se encontraron canciones para este artista');
             }
             
-            // Crear una "playlist virtual" con los top tracks
+            // Crear una "playlist virtual" con todos los tracks
             const virtualPlaylist = {
                 id: `artist_${artistId}`,
                 name: `Top Tracks - ${artistName}`,
-                tracks: topTracks.map(track => ({
+                tracks: allTracks.map(track => ({
                     name: track.name,
                     artist: track.artists.map(a => a.name).join(', '),
                     uri: track.uri,
@@ -573,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Volver a la búsqueda
             document.getElementById('my-playlists-grid').innerHTML = `
-                <div class="loading-text">Busca un artista para empezar...</div>
+                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
             `;
         }
     }
@@ -1090,21 +1109,39 @@ document.addEventListener('DOMContentLoaded', () => {
         nextSongButton.disabled = true;
         
         try {
-            const userToken = await getAccessToken();
-            const response = await fetch('/api/get-track', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playlistId: currentGenre.playlistId, userToken })
-            });
+            // Si es una playlist virtual de artista, seleccionar otra canción aleatoria
+            if (currentGenre.playlistId.startsWith('artist_')) {
+                if (allTracks && allTracks.length > 0) {
+                    // Seleccionar una canción aleatoria de las ya cargadas
+                    const randomTrack = allTracks[Math.floor(Math.random() * allTracks.length)];
+                    currentTrack = {
+                        name: randomTrack.name,
+                        artist: randomTrack.artist,
+                        uri: randomTrack.uri,
+                        album_art: randomTrack.album_art || ''
+                    };
+                    startGame();
+                } else {
+                    throw new Error('No hay más canciones disponibles');
+                }
+            } else {
+                // Para playlists normales, usar el API
+                const userToken = await getAccessToken();
+                const response = await fetch('/api/get-track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playlistId: currentGenre.playlistId, userToken })
+                });
 
-            if (!response.ok) {
-                throw new Error('Error al obtener nueva canción');
+                if (!response.ok) {
+                    throw new Error('Error al obtener nueva canción');
+                }
+                
+                const data = await response.json();
+                currentTrack = data.track;
+                allTracks = data.allTracks || [];
+                startGame(); // Reinicia el juego con la nueva canción
             }
-            
-            const data = await response.json();
-            currentTrack = data.track;
-            allTracks = data.allTracks || [];
-            startGame(); // Reinicia el juego con la nueva canción
 
         } catch (error) {
             console.error("Error fetching next track:", error);
