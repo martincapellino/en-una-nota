@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
         "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8",
         "Trips amor": "048rzSoDjd1NO3X7xu0dkg",
         "En Una Nota": "2kumFei7d5KRoI2fLFgu2G"
-        
     };
 
     // Playlists de artistas
@@ -26,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- GAME STATE ----
     let currentTrack = null;
     let currentAttempt = 0;
-    const trackDurations = [500, 2000, 5000]; // 0.5s, 2s, 5s
+    const trackDurations = [1000, 3000, 5000]; // 1s, 3s, 5s
     const blurLevels = [25, 15, 5, 0];
     let playTimeout = null;
     let allTracks = []; // Todas las canciones de la playlist actual para autocompletado
@@ -527,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="hide-cover-toggle">
                 <label class="toggle-label">
                     <input type="checkbox" id="hideCoverCheckbox" ${hideAlbumArt ? 'checked' : ''}>
-                    <span class="toggle-text">🙈 Ocultar portada (modo difícil)</span>
+                    <span class="toggle-text">Ocultar portada (modo difícil)</span>
                 </label>
             </div>
             <div class="timer-container">
@@ -923,8 +922,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showGenreSelection();
     });
 });
-
-
 
 
 
