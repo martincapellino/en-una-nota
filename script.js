@@ -565,18 +565,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         offset += limit;
                     }
                     
-                    // Procesar tracks de la playlist
-                    artistTracks = playlistTracks.map(item => {
-                        const track = item.track;
-                        return {
-                            name: track.name || 'Canción sin nombre',
-                            artist: track.artists.map(a => a.name).join(', '),
-                            uri: track.uri || '',
-                            album_art: (track.album && track.album.images && track.album.images[0]) 
-                                ? track.album.images[0].url 
-                                : ''
-                        };
-                    }).filter(track => track.name && track.uri);
+                    // Procesar tracks de la playlist con validaciones robustas
+                    artistTracks = playlistTracks
+                        .filter(item => item && item.track) // Filtrar items nulos
+                        .map(item => {
+                            try {
+                                const track = item.track;
+                                
+                                // Validar que el track tenga las propiedades necesarias
+                                if (!track || !track.name || !track.uri) {
+                                    return null;
+                                }
+                                
+                                return {
+                                    name: track.name,
+                                    artist: (track.artists && track.artists.length > 0) 
+                                        ? track.artists.map(a => a.name).join(', ')
+                                        : 'Artista desconocido',
+                                    uri: track.uri,
+                                    album_art: (track.album && track.album.images && track.album.images[0]) 
+                                        ? track.album.images[0].url 
+                                        : ''
+                                };
+                            } catch (error) {
+                                console.warn('Error procesando track:', item, error);
+                                return null;
+                            }
+                        })
+                        .filter(track => track !== null); // Eliminar tracks nulos
                     
                     foundThisIsPlaylist = true;
                     console.log(`🎵 Playlist "This Is" cargada: ${artistTracks.length} canciones`);
@@ -624,18 +640,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     return track && track.name && track.uri && track.artists && track.artists.length > 0;
                 });
                 
-                artistTracks = allTracksCombined.map(track => {
-                    const albumArt = (track.album && track.album.images && track.album.images.length > 0) 
-                        ? track.album.images[0].url 
-                        : '';
-                    
-                    return {
-                        name: track.name || 'Canción sin nombre',
-                        artist: track.artists.map(a => a.name).join(', '),
-                        uri: track.uri || '',
-                        album_art: albumArt
-                    };
-                });
+                artistTracks = allTracksCombined
+                    .filter(track => track && track.name && track.uri) // Filtrar tracks inválidos
+                    .map(track => {
+                        const albumArt = (track.album && track.album.images && track.album.images.length > 0) 
+                            ? track.album.images[0].url 
+                            : '';
+                        
+                        return {
+                            name: track.name,
+                            artist: (track.artists && track.artists.length > 0) 
+                                ? track.artists.map(a => a.name).join(', ')
+                                : 'Artista desconocido',
+                            uri: track.uri,
+                            album_art: albumArt
+                        };
+                    });
                 
                 console.log(`🎵 Método alternativo: ${artistTracks.length} canciones`);
             }
