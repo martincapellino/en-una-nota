@@ -6,10 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
         "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8"
     };
 
-    // Playlists de artistas
+    // Playlists de artistas (usar IDs válidos de playlists públicas de Spotify)
     const artists = {
-        "Duki": "37i9dQZF1DZ06evO45rTq", // This Is Duki
-        "Kanye West": "37i9dQZF1DZ06evO45rTq" // This Is Kanye West
+        "Duki": "37i9dQZF1DX8tPJOYale3D", // This Is Duki
+        "Kanye West": "37i9dQZF1DZ06evO3nMr04" // This Is Kanye West
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -353,15 +353,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showArtistSelection() {
         currentSection = 'artists';
-        let artistButtonsHTML = '';
-        for (const [name, id] of Object.entries(artists)) {
-            artistButtonsHTML += `<button class="genre-button" data-playlist-id="${id}">${name.toUpperCase()}</button>`;
-        }
+        
+        // Crear cards para artistas con imágenes
+        const artistCards = Object.entries(artists).map(([name, id]) => {
+            // URLs de imágenes de artistas
+            const artistImages = {
+                "Duki": "https://i.scdn.co/image/ab6761610000e5ebaad67868e61430c44f9d2632",
+                "Kanye West": "https://i.scdn.co/image/ab6761610000e5eb867008a971fae0f4d913f63a"
+            };
+            
+            const cover = artistImages[name] || '';
+            return `
+                <div class="playlist-card" data-playlist-id="${id}">
+                    ${cover ? `<img src="${cover}" alt="${name}">` : ''}
+                    <div class="playlist-title">${name.toUpperCase()}</div>
+                    <div class="playlist-meta">Top Tracks</div>
+                    <button class="genre-button" data-playlist-id="${id}">JUGAR</button>
+                </div>
+            `;
+        }).join('');
 
         genreSelectionContainer.innerHTML = `
             <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
             <h2>ELEGÍ UN ARTISTA</h2>
-            <div id="genre-buttons">${artistButtonsHTML}</div>
+            <div id="my-playlists-grid">${artistCards}</div>
         `;
 
         document.getElementById('back-to-menu-button').onclick = () => {
@@ -369,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         // Usar onclick para evitar listeners duplicados
-        const artistButtons = document.getElementById('genre-buttons');
+        const artistButtons = document.getElementById('my-playlists-grid');
         artistButtons.onclick = handleGenreClick;
         showScreen(genreSelectionContainer);
     }
@@ -383,9 +398,21 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSection = 'myplaylists';
         // requiere sesión
         try {
-            const playlists = await spotifyApi('GET', '/me/playlists?limit=50');
+            // Obtener todas las playlists del usuario (propias y seguidas) con paginación
+            let allPlaylists = [];
+            let offset = 0;
+            const limit = 50;
+            
+            while (true) {
+                const playlists = await spotifyApi('GET', `/me/playlists?limit=${limit}&offset=${offset}`);
+                const items = playlists.items || [];
+                allPlaylists = allPlaylists.concat(items);
+                
+                if (!playlists.next || items.length < limit) break;
+                offset += limit;
+            }
             // Mostrar todas las playlists del usuario (propias y seguidas)
-            const list = playlists.items || [];
+            const list = allPlaylists;
             const cards = list.map(p => {
                 const cover = (p.images && p.images[1] && p.images[1].url) || (p.images && p.images[0] && p.images[0].url) || '';
                 const tracksTotal = p.tracks?.total ?? '';
