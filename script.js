@@ -48,7 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
             headers['X-Spotify-Refresh-Token'] = localToken;
         }
         const resp = await fetch('/api/spotify-access-token', { method: 'GET', headers });
-        if (!resp.ok) throw new Error('No se pudo obtener access token');
+        if (!resp.ok) {
+            if (resp.status === 500) {
+                throw new Error('Error del servidor. Intenta recargar la página.');
+            }
+            throw new Error(`No se pudo obtener access token (${resp.status})`);
+        }
         const data = await resp.json();
         return data.access_token;
     }
@@ -85,6 +90,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Verificar que el SDK de Spotify esté disponible
+            if (!window.Spotify || !window.Spotify.Player) {
+                console.error('Spotify Web Playback SDK no está disponible');
+                alert('Error: Spotify Web Playback SDK no está cargado. Recarga la página.');
+                return;
+            }
+            
             spotifyPlayer = new window.Spotify.Player({
                 name: 'En Una Nota',
                 getOAuthToken: async cb => {
@@ -539,19 +551,52 @@ document.addEventListener('DOMContentLoaded', () => {
             const topTracksResponse = await spotifyApi('GET', `/artists/${artistId}/top-tracks?market=ES`);
             const topTracks = topTracksResponse.tracks || [];
             
-            // Obtener álbumes del artista para más variedad
-            const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=20&include_groups=album,single`);
-            const albums = albumsResponse.items || [];
+            // Obtener TODOS los álbumes del artista con paginación
+            let allAlbums = [];
+            let offset = 0;
+            const limit = 50;
             
-            // Obtener tracks de varios álbumes
+            // Paginación para obtener todos los álbumes
+            while (true) {
+                const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=${limit}&offset=${offset}&include_groups=album,single`);
+                const albums = albumsResponse.items || [];
+                allAlbums = allAlbums.concat(albums);
+                
+                if (!albumsResponse.next || albums.length < limit) break;
+                offset += limit;
+            }
+            
+            console.log(`📀 Total de álbumes encontrados: ${allAlbums.length}`);
+            
+            // Estrategia inteligente: mezclar álbumes antiguos y nuevos
+            let selectedAlbums = [];
+            
+            // 1. Tomar los primeros 3 álbumes (más antiguos, más conocidos)
+            selectedAlbums = selectedAlbums.concat(allAlbums.slice(0, 3));
+            
+            // 2. Tomar algunos del medio (álbumes intermedios)
+            const middleStart = Math.floor(allAlbums.length / 3);
+            const middleEnd = Math.floor(allAlbums.length * 2 / 3);
+            selectedAlbums = selectedAlbums.concat(allAlbums.slice(middleStart, middleEnd).slice(0, 3));
+            
+            // 3. Tomar los últimos 2 (más recientes)
+            selectedAlbums = selectedAlbums.concat(allAlbums.slice(-2));
+            
+            // Eliminar duplicados
+            selectedAlbums = selectedAlbums.filter((album, index, self) => 
+                index === self.findIndex(a => a.id === album.id)
+            );
+            
+            console.log(`🎯 Álbumes seleccionados: ${selectedAlbums.length} (${selectedAlbums.map(a => a.name).join(', ')})`);
+            
+            // Obtener tracks de los álbumes seleccionados
             let additionalTracks = [];
-            const maxAlbums = Math.min(8, albums.length); // Hasta 8 álbumes para buena variedad
             
-            for (let i = 0; i < maxAlbums; i++) {
+            for (let i = 0; i < selectedAlbums.length; i++) {
                 try {
                     // Obtener información completa del álbum (incluyendo imágenes)
-                    const albumInfoResponse = await spotifyApi('GET', `/albums/${albums[i].id}?market=ES`);
-                    const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=30`);
+                    const albumInfoResponse = await spotifyApi('GET', `/albums/${selectedAlbums[i].id}?market=ES`);
+                    const albumTracksResponse = await spotifyApi('GET', `/albums/${selectedAlbums[i].id}/tracks?market=ES&limit=30`);
                     const albumTracks = albumTracksResponse.items || [];
                     
                     // Agregar información del álbum a cada track
@@ -564,9 +609,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }));
                     
                     additionalTracks = additionalTracks.concat(tracksWithAlbumInfo);
-                    console.log(`📀 Álbum ${i+1}/${maxAlbums}: ${albums[i].name} - ${albumTracks.length} tracks`);
+                    console.log(`📀 Álbum ${i+1}/${selectedAlbums.length}: ${selectedAlbums[i].name} - ${albumTracks.length} tracks`);
                 } catch (error) {
-                    console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
+                    console.warn(`Error obteniendo tracks del álbum ${selectedAlbums[i].name}:`, error);
                 }
             }
             
