@@ -295,8 +295,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showGenreSelection();
         };
         const artistsBtn = document.getElementById('artists-button-dynamic');
-        if (artistsBtn) artistsBtn.onclick = () => {
-            showArtistSelection();
+        if (artistsBtn) artistsBtn.onclick = async () => {
+            await showArtistSelection();
         };
         const connectBtn = document.getElementById('connect-spotify-button');
         if (connectBtn) connectBtn.onclick = async () => {
@@ -352,52 +352,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function showArtistSelection() {
-        currentSection = 'artists';
-        
-        genreSelectionContainer.innerHTML = `
-            <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
-            <h2>BUSCAR ARTISTA</h2>
-            <div class="search-container">
-                <input type="text" id="artist-search-input" placeholder="Buscar artista..." autocomplete="off">
-                <div id="artist-suggestions" class="suggestions-container"></div>
-            </div>
-            <div id="my-playlists-grid">
-                <div class="loading-text">Busca un artista para empezar...</div>
-            </div>
-        `;
+        try {
+            currentSection = 'artists';
+            
+            genreSelectionContainer.innerHTML = `
+                <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
+                <h2>BUSCAR ARTISTA</h2>
+                <div class="search-container">
+                    <input type="text" id="artist-search-input" placeholder="Buscar artista..." autocomplete="off">
+                    <div id="artist-suggestions" class="suggestions-container"></div>
+                </div>
+                <div id="my-playlists-grid">
+                    <div class="loading-text">Busca un artista para empezar...</div>
+                </div>
+            `;
 
-        document.getElementById('back-to-menu-button').onclick = () => {
-            initializeMenu();
-        };
-        
-        // Configurar el buscador de artistas
-        setupArtistSearch();
+            document.getElementById('back-to-menu-button').onclick = () => {
+                initializeMenu();
+            };
+            
+            // Configurar el buscador de artistas
+            setupArtistSearch();
+            showScreen(genreSelectionContainer);
+            
+        } catch (error) {
+            console.error('Error en showArtistSelection:', error);
+            alert('Error al abrir la sección de artistas. Intenta de nuevo.');
+        }
     }
     
     function setupArtistSearch() {
-        const searchInput = document.getElementById('artist-search-input');
-        const suggestions = document.getElementById('artist-suggestions');
-        let searchTimeout = null;
-        
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
+        try {
+            const searchInput = document.getElementById('artist-search-input');
+            const suggestions = document.getElementById('artist-suggestions');
+            let searchTimeout = null;
             
-            // Limpiar timeout anterior
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
+            if (!searchInput) {
+                console.error('No se encontró el input de búsqueda de artistas');
+                return;
             }
             
-            if (query.length >= 2) {
-                // Debounce la búsqueda
-                searchTimeout = setTimeout(() => {
-                    searchArtists(query);
-                }, 300);
-            } else {
-                hideArtistSuggestions();
-            }
-        });
-        
-        searchInput.addEventListener('keydown', (e) => {
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                
+                // Limpiar timeout anterior
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                
+                if (query.length >= 2) {
+                    // Debounce la búsqueda
+                    searchTimeout = setTimeout(() => {
+                        searchArtists(query);
+                    }, 300);
+                } else {
+                    hideArtistSuggestions();
+                }
+            });
+            
+            searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 const suggestions = document.querySelectorAll('.artist-suggestion-item');
                 if (suggestions.length > 0 && document.querySelector('.artist-suggestion-item.highlighted')) {
@@ -420,6 +433,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 hideArtistSuggestions();
             }
         });
+        
+        } catch (error) {
+            console.error('Error en setupArtistSearch:', error);
+        }
     }
     
     async function searchArtists(query) {
