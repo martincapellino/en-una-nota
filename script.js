@@ -3,15 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Aquí están tus playlists configuradas
     const genres = {
         "Desafio Kochi: Quevedo": "1IaFDLfOGmJx9LH77iuMDt",
-        "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8",
-        "Trips amor": "048rzSoDjd1NO3X7xu0dkg",
-        "En Una Nota": "2kumFei7d5KRoI2fLFgu2G"
+        "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8"
     };
 
     // Playlists de artistas
     const artists = {
-        "Duki": "37i9dQZF1DXe1ikyKZnRtc",
-        "Kanye West": "37i9dQZF1DZ06evO3nMr04"
+        "Duki": "37i9dQZF1DZ06evO45rTq", // This Is Duki
+        "Kanye West": "37i9dQZF1DZ06evO45rTq" // This Is Kanye West
     };
 
     // ---- DOM ELEMENT REFERENCES ----
@@ -200,6 +198,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Configurar la duración objetivo y resetear el start time
         targetDuration = ms;
         playStartTime = null;
+        
+        // Pausar primero para asegurar que empiece del inicio
+        try {
+            await spotifyApi('PUT', `/me/player/pause?device_id=${encodeURIComponent(spotifyDeviceId)}`);
+        } catch (_) {} // Ignorar errores de pausa
+        
+        // Pequeña pausa para asegurar que se procese la pausa
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Reproducir desde el inicio
         await spotifyApi('PUT', `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`, { 
