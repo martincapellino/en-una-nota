@@ -539,16 +539,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const topTracks = topTracksResponse.tracks || [];
             
             // También obtener álbumes del artista para más variedad
-            const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=20&include_groups=album,single`);
+            const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=50&include_groups=album,single`);
             const albums = albumsResponse.items || [];
             
-            // Obtener tracks de los álbumes más populares
+            // Obtener tracks de más álbumes para máxima variedad
             let additionalTracks = [];
-            for (let i = 0; i < Math.min(3, albums.length); i++) {
+            const maxAlbums = Math.min(10, albums.length); // Obtener hasta 10 álbumes
+            
+            for (let i = 0; i < maxAlbums; i++) {
                 try {
-                    const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=20`);
+                    const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=50`);
                     const albumTracks = albumTracksResponse.items || [];
                     additionalTracks = additionalTracks.concat(albumTracks);
+                    console.log(`📀 Álbum ${i+1}/${maxAlbums}: ${albums[i].name} - ${albumTracks.length} tracks`);
                 } catch (error) {
                     console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
                 }
@@ -559,6 +562,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Filtrar tracks que no tengan las propiedades básicas necesarias
                 return track && track.name && track.uri && track.artists && track.artists.length > 0;
             });
+            
+            console.log(`🎵 Total tracks cargados: ${artistTracks.length} (${topTracks.length} top tracks + ${additionalTracks.length} de álbumes)`);
             
             if (artistTracks.length === 0) {
                 throw new Error('No se encontraron canciones para este artista');
@@ -601,13 +606,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Simular la respuesta del API get-track
             const mockResponse = {
                 track: virtualPlaylist.tracks[Math.floor(Math.random() * virtualPlaylist.tracks.length)],
-                allTracks: virtualPlaylist.tracks.map(t => ({ name: t.name, artist: t.artist }))
+                allTracks: virtualPlaylist.tracks.map(t => ({ 
+                    name: t.name, 
+                    artist: t.artist,
+                    uri: t.uri,
+                    album_art: t.album_art
+                }))
             };
             
             // Usar la misma lógica que handleGenreClick
             currentTrack = mockResponse.track;
             allTracks = mockResponse.allTracks;
             currentGenre = { playlistId: virtualPlaylist.id, playlistName: virtualPlaylist.name };
+            
+            console.log('🎵 Track seleccionado:', currentTrack);
             
             startGame();
             
@@ -1145,6 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         uri: randomTrack.uri || '',
                         album_art: randomTrack.album_art || ''
                     };
+                    console.log('🎵 Nueva canción seleccionada:', currentTrack);
                     startGame();
                 } else {
                     throw new Error('No hay más canciones disponibles');
