@@ -423,6 +423,60 @@ button:active {
     margin: 0;
 }
 
+/* --- Artist Search --- */
+.search-container {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+#artist-search-input {
+    width: 100%;
+    padding: 15px 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: #2a2a2a;
+    border: 2px solid #3a3a3a;
+    border-radius: 8px;
+    color: #ffffff;
+    transition: all 0.3s ease;
+}
+
+#artist-search-input:focus {
+    outline: none;
+    border-color: #1DB954;
+    background: #333333;
+}
+
+#artist-search-input::placeholder {
+    color: #999999;
+}
+
+.artist-suggestion-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    color: #ffffff;
+    cursor: pointer;
+    border-bottom: 1px solid #3a3a3a;
+    text-align: left;
+    font-size: 0.95rem;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.artist-suggestion-item:hover,
+.artist-suggestion-item.highlighted {
+    background: #1DB954;
+    color: #0a0a0a;
+    padding-left: 18px;
+}
+
+.artist-suggestion-item:last-child {
+    border-bottom: none;
+}
+
 /* --- Action Buttons --- */
 .action-buttons {
     display: flex;
