@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Playlists de artistas (usar IDs válidos de playlists públicas de Spotify)
     const artists = {
-        "Duki": "37i9dQZF1DXe1ikyKZnRtc", // Top Tracks de Duki
+        "Duki": "37i9dQZF1DX4sWSpwq3LiO", // Top Tracks de Duki
         "Kanye West": "37i9dQZF1DZ06evO3nMr04" // Top Tracks de Kanye West
     };
 
@@ -356,9 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         genreSelectionContainer.innerHTML = `
             <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
-            <h2>ELEGÍ UN ARTISTA</h2>
+            <h2>BUSCAR ARTISTA</h2>
+            <div class="search-container">
+                <input type="text" id="artist-search-input" placeholder="Buscar artista..." autocomplete="off">
+                <div id="artist-suggestions" class="suggestions-container"></div>
+            </div>
             <div id="my-playlists-grid">
-                <div class="loading-text">Cargando artistas...</div>
+                <div class="loading-text">Busca un artista para empezar...</div>
             </div>
         `;
 
@@ -366,60 +370,194 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeMenu();
         };
         
-        try {
-            // Obtener información de las playlists directamente (incluyendo imágenes)
-            const artistCards = await Promise.all(
-                Object.entries(artists).map(async ([name, playlistId]) => {
-                    try {
-                        // Obtener información de la playlist desde Spotify
-                        const playlistData = await spotifyApi('GET', `/playlists/${playlistId}`);
-                        const cover = playlistData.images && playlistData.images[0] ? playlistData.images[0].url : '';
-                        const trackCount = playlistData.tracks?.total || 0;
-                        
-                        return `
-                            <div class="playlist-card" data-playlist-id="${playlistId}">
-                                ${cover ? `<img src="${cover}" alt="${name}">` : ''}
-                                <div class="playlist-title">${name.toUpperCase()}</div>
-                                <div class="playlist-meta">${trackCount} temas</div>
-                                <button class="genre-button" data-playlist-id="${playlistId}">JUGAR</button>
-                            </div>
-                        `;
-                    } catch (error) {
-                        console.warn(`Error cargando playlist de ${name}:`, error);
-                        return `
-                            <div class="playlist-card" data-playlist-id="${playlistId}">
-                                <div class="playlist-title">${name.toUpperCase()}</div>
-                                <div class="playlist-meta">Top Tracks</div>
-                                <button class="genre-button" data-playlist-id="${playlistId}">JUGAR</button>
-                            </div>
-                        `;
+        // Configurar el buscador de artistas
+        setupArtistSearch();
+    }
+    
+    function setupArtistSearch() {
+        const searchInput = document.getElementById('artist-search-input');
+        const suggestions = document.getElementById('artist-suggestions');
+        let searchTimeout = null;
+        
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            
+            // Limpiar timeout anterior
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            if (query.length >= 2) {
+                // Debounce la búsqueda
+                searchTimeout = setTimeout(() => {
+                    searchArtists(query);
+                }, 300);
+            } else {
+                hideArtistSuggestions();
+            }
+        });
+        
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const suggestions = document.querySelectorAll('.artist-suggestion-item');
+                if (suggestions.length > 0 && document.querySelector('.artist-suggestion-item.highlighted')) {
+                    const highlighted = document.querySelector('.artist-suggestion-item.highlighted');
+                    selectArtist(highlighted.dataset.artistId, highlighted.dataset.artistName);
+                } else {
+                    // Buscar con el texto actual
+                    const query = e.target.value.trim();
+                    if (query.length >= 2) {
+                        searchArtists(query);
                     }
-                })
-            );
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightNextArtistSuggestion();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightPrevArtistSuggestion();
+            } else if (e.key === 'Escape') {
+                hideArtistSuggestions();
+            }
+        });
+    }
+    
+    async function searchArtists(query) {
+        try {
+            console.log('🔍 Buscando artistas:', query);
+            const response = await spotifyApi('GET', `/search?q=${encodeURIComponent(query)}&type=artist&limit=8`);
+            const artists = response.artists?.items || [];
             
-            document.getElementById('my-playlists-grid').innerHTML = artistCards.join('');
+            if (artists.length > 0) {
+                showArtistSuggestions(artists);
+            } else {
+                hideArtistSuggestions();
+            }
+        } catch (error) {
+            console.error('Error buscando artistas:', error);
+            hideArtistSuggestions();
+        }
+    }
+    
+    function showArtistSuggestions(artists) {
+        const suggestions = document.getElementById('artist-suggestions');
+        
+        const suggestionsHTML = artists.map((artist, index) => {
+            const image = artist.images && artist.images[0] ? artist.images[0].url : '';
+            const followers = artist.followers?.total ? Math.floor(artist.followers.total / 1000) + 'K seguidores' : '';
             
-            // Usar onclick para evitar listeners duplicados
-            const artistButtons = document.getElementById('my-playlists-grid');
-            artistButtons.onclick = handleGenreClick;
-            showScreen(genreSelectionContainer);
+            return `
+                <div class="artist-suggestion-item ${index === 0 ? 'highlighted' : ''}" 
+                     data-artist-id="${artist.id}" 
+                     data-artist-name="${artist.name}">
+                    ${image ? `<img src="${image}" alt="${artist.name}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px;">` : ''}
+                    <div>
+                        <div style="font-weight: 700; color: #ffffff;">${artist.name}</div>
+                        <div style="font-size: 0.9rem; color: #999999;">${followers}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        suggestions.innerHTML = suggestionsHTML;
+        
+        // Agregar listeners a las sugerencias
+        suggestions.querySelectorAll('.artist-suggestion-item').forEach(item => {
+            item.addEventListener('click', () => {
+                selectArtist(item.dataset.artistId, item.dataset.artistName);
+            });
+        });
+    }
+    
+    function hideArtistSuggestions() {
+        const suggestions = document.getElementById('artist-suggestions');
+        suggestions.innerHTML = '';
+    }
+    
+    function highlightNextArtistSuggestion() {
+        const suggestions = document.querySelectorAll('.artist-suggestion-item');
+        const current = document.querySelector('.artist-suggestion-item.highlighted');
+        if (current) {
+            current.classList.remove('highlighted');
+            const next = current.nextElementSibling;
+            if (next) {
+                next.classList.add('highlighted');
+            } else if (suggestions.length > 0) {
+                suggestions[0].classList.add('highlighted');
+            }
+        }
+    }
+    
+    function highlightPrevArtistSuggestion() {
+        const suggestions = document.querySelectorAll('.artist-suggestion-item');
+        const current = document.querySelector('.artist-suggestion-item.highlighted');
+        if (current) {
+            current.classList.remove('highlighted');
+            const prev = current.previousElementSibling;
+            if (prev) {
+                prev.classList.add('highlighted');
+            } else if (suggestions.length > 0) {
+                suggestions[suggestions.length - 1].classList.add('highlighted');
+            }
+        }
+    }
+    
+    async function selectArtist(artistId, artistName) {
+        console.log('🎵 Artista seleccionado:', { artistId, artistName });
+        
+        // Ocultar sugerencias
+        hideArtistSuggestions();
+        
+        // Limpiar input
+        document.getElementById('artist-search-input').value = '';
+        
+        // Mostrar loading
+        document.getElementById('my-playlists-grid').innerHTML = `
+            <div class="loading-text">Obteniendo top tracks de ${artistName}...</div>
+        `;
+        
+        try {
+            // Obtener top tracks del artista
+            const topTracksResponse = await spotifyApi('GET', `/artists/${artistId}/top-tracks?market=ES`);
+            const topTracks = topTracksResponse.tracks || [];
+            
+            if (topTracks.length === 0) {
+                throw new Error('No se encontraron canciones para este artista');
+            }
+            
+            // Crear una "playlist virtual" con los top tracks
+            const virtualPlaylist = {
+                id: `artist_${artistId}`,
+                name: `Top Tracks - ${artistName}`,
+                tracks: topTracks.map(track => ({
+                    name: track.name,
+                    artist: track.artists.map(a => a.name).join(', '),
+                    uri: track.uri,
+                    album_art: track.album.images && track.album.images[0] ? track.album.images[0].url : ''
+                }))
+            };
+            
+            // Simular la respuesta del API get-track
+            const mockResponse = {
+                track: virtualPlaylist.tracks[Math.floor(Math.random() * virtualPlaylist.tracks.length)],
+                allTracks: virtualPlaylist.tracks.map(t => ({ name: t.name, artist: t.artist }))
+            };
+            
+            // Usar la misma lógica que handleGenreClick
+            currentTrack = mockResponse.track;
+            allTracks = mockResponse.allTracks;
+            currentGenre = { playlistId: virtualPlaylist.id, playlistName: virtualPlaylist.name };
+            
+            startGame();
             
         } catch (error) {
-            console.error('Error cargando artistas:', error);
-            // Fallback: mostrar sin imágenes
-            const fallbackCards = Object.entries(artists).map(([name, id]) => `
-                <div class="playlist-card" data-playlist-id="${id}">
-                    <div class="playlist-title">${name.toUpperCase()}</div>
-                    <div class="playlist-meta">Top Tracks</div>
-                    <button class="genre-button" data-playlist-id="${id}">JUGAR</button>
-                </div>
-            `).join('');
+            console.error('Error obteniendo top tracks:', error);
+            alert(`Error al obtener las canciones de ${artistName}: ${error.message}`);
             
-            document.getElementById('my-playlists-grid').innerHTML = fallbackCards;
-            
-            const artistButtons = document.getElementById('my-playlists-grid');
-            artistButtons.onclick = handleGenreClick;
-            showScreen(genreSelectionContainer);
+            // Volver a la búsqueda
+            document.getElementById('my-playlists-grid').innerHTML = `
+                <div class="loading-text">Busca un artista para empezar...</div>
+            `;
         }
     }
 
