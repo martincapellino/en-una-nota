@@ -607,39 +607,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('No se encontraron canciones para este artista');
             }
             
-            // Crear una "playlist virtual" con todos los tracks
+            // Crear una "playlist virtual" con todos los tracks (ya procesados)
             const virtualPlaylist = {
                 id: `artist_${artistId}`,
                 name: `Top Tracks - ${artistName}`,
-                tracks: artistTracks.map(track => {
-                    try {
-                        // Obtener imagen del álbum
-                        const albumArt = (track.album && track.album.images && track.album.images.length > 0) 
-                            ? track.album.images[0].url 
-                            : '';
-                        
-                        const artistName = (track.artists && track.artists.length > 0)
-                            ? track.artists.map(a => a.name).join(', ')
-                            : 'Artista desconocido';
-                        
-                        console.log(`🎵 Track: ${track.name} | Album: ${track.album?.name || 'N/A'} | Art: ${albumArt ? '✅' : '❌'}`);
-                        
-                        return {
-                            name: track.name || 'Canción sin nombre',
-                            artist: artistName,
-                            uri: track.uri || '',
-                            album_art: albumArt
-                        };
-                    } catch (error) {
-                        console.warn('Error procesando track:', track, error);
-                        return {
-                            name: track.name || 'Canción sin nombre',
-                            artist: 'Artista desconocido',
-                            uri: track.uri || '',
-                            album_art: ''
-                        };
-                    }
-                }).filter(track => track.name && track.uri) // Filtrar tracks inválidos
+                tracks: artistTracks // Ya están procesados correctamente
             };
             
             // Simular la respuesta del API get-track
