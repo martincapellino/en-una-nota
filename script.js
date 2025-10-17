@@ -374,9 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <input type="text" id="artist-search-input" placeholder="Buscar artista..." autocomplete="off">
                     <div id="artist-suggestions" class="suggestions-container"></div>
                 </div>
-                <div style="text-align: center; margin: 40px 0;">
-                    <div style="font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
-                </div>
+                <div id="artist-helper" style="text-align: center; margin: 40px 0; font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
                 <div id="my-playlists-grid"></div>
             `;
 
@@ -541,10 +539,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Limpiar input
         document.getElementById('artist-search-input').value = '';
         
-        // Mostrar loading
-        document.getElementById('my-playlists-grid').innerHTML = `
-            <div class="loading-text" style="text-align: center; font-size: 1.1rem; color: #1DB954; font-weight: 600; margin: 20px 0;">Buscando canciones de ${artistName}...</div>
-        `;
+        // Mostrar loading: reemplazar el helper y limpiar grid
+        const helper = document.getElementById('artist-helper');
+        if (helper) helper.textContent = `Buscando canciones de ${artistName}...`;
+        const grid = document.getElementById('my-playlists-grid');
+        if (grid) grid.innerHTML = '';
         
         try {
             // Obtener top tracks del artista
