@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Playlists de artistas (usar IDs válidos de playlists públicas de Spotify)
     const artists = {
-        "Duki": "0T4Ic0JnO2Skrjvg3xw6S1", // Top Tracks de Duki
+        "Duki": "37i9dQZF1DXe1ikyKZnRtc", // Top Tracks de Duki
         "Kanye West": "37i9dQZF1DZ06evO3nMr04" // Top Tracks de Kanye West
     };
 
@@ -351,42 +351,76 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen(genreSelectionContainer);
     }
 
-    function showArtistSelection() {
+    async function showArtistSelection() {
         currentSection = 'artists';
         
-        // Crear cards para artistas con imágenes
-        const artistCards = Object.entries(artists).map(([name, id]) => {
-            // URLs de imágenes de artistas
-            const artistImages = {
-                "Duki": "https://i.scdn.co/image/ab6761610000e5ebaad67868e61430c44f9d2632",
-                "Kanye West": "https://i.scdn.co/image/ab6761610000e5eb867008a971fae0f4d913f63a"
-            };
-            
-            const cover = artistImages[name] || '';
-            return `
-                <div class="playlist-card" data-playlist-id="${id}">
-                    ${cover ? `<img src="${cover}" alt="${name}">` : ''}
-                    <div class="playlist-title">${name.toUpperCase()}</div>
-                    <div class="playlist-meta">Top Tracks</div>
-                    <button class="genre-button" data-playlist-id="${id}">JUGAR</button>
-                </div>
-            `;
-        }).join('');
-
         genreSelectionContainer.innerHTML = `
             <button class="back-arrow-button" id="back-to-menu-button">← Volver</button>
             <h2>ELEGÍ UN ARTISTA</h2>
-            <div id="my-playlists-grid">${artistCards}</div>
+            <div id="my-playlists-grid">
+                <div class="loading-text">Cargando artistas...</div>
+            </div>
         `;
 
         document.getElementById('back-to-menu-button').onclick = () => {
             initializeMenu();
         };
         
-        // Usar onclick para evitar listeners duplicados
-        const artistButtons = document.getElementById('my-playlists-grid');
-        artistButtons.onclick = handleGenreClick;
-        showScreen(genreSelectionContainer);
+        try {
+            // Obtener información de las playlists directamente (incluyendo imágenes)
+            const artistCards = await Promise.all(
+                Object.entries(artists).map(async ([name, playlistId]) => {
+                    try {
+                        // Obtener información de la playlist desde Spotify
+                        const playlistData = await spotifyApi('GET', `/playlists/${playlistId}`);
+                        const cover = playlistData.images && playlistData.images[0] ? playlistData.images[0].url : '';
+                        const trackCount = playlistData.tracks?.total || 0;
+                        
+                        return `
+                            <div class="playlist-card" data-playlist-id="${playlistId}">
+                                ${cover ? `<img src="${cover}" alt="${name}">` : ''}
+                                <div class="playlist-title">${name.toUpperCase()}</div>
+                                <div class="playlist-meta">${trackCount} temas</div>
+                                <button class="genre-button" data-playlist-id="${playlistId}">JUGAR</button>
+                            </div>
+                        `;
+                    } catch (error) {
+                        console.warn(`Error cargando playlist de ${name}:`, error);
+                        return `
+                            <div class="playlist-card" data-playlist-id="${playlistId}">
+                                <div class="playlist-title">${name.toUpperCase()}</div>
+                                <div class="playlist-meta">Top Tracks</div>
+                                <button class="genre-button" data-playlist-id="${playlistId}">JUGAR</button>
+                            </div>
+                        `;
+                    }
+                })
+            );
+            
+            document.getElementById('my-playlists-grid').innerHTML = artistCards.join('');
+            
+            // Usar onclick para evitar listeners duplicados
+            const artistButtons = document.getElementById('my-playlists-grid');
+            artistButtons.onclick = handleGenreClick;
+            showScreen(genreSelectionContainer);
+            
+        } catch (error) {
+            console.error('Error cargando artistas:', error);
+            // Fallback: mostrar sin imágenes
+            const fallbackCards = Object.entries(artists).map(([name, id]) => `
+                <div class="playlist-card" data-playlist-id="${id}">
+                    <div class="playlist-title">${name.toUpperCase()}</div>
+                    <div class="playlist-meta">Top Tracks</div>
+                    <button class="genre-button" data-playlist-id="${id}">JUGAR</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('my-playlists-grid').innerHTML = fallbackCards;
+            
+            const artistButtons = document.getElementById('my-playlists-grid');
+            artistButtons.onclick = handleGenreClick;
+            showScreen(genreSelectionContainer);
+        }
     }
 
     // Handler para clicks en playlists (función nombrada para poder remover)
@@ -961,7 +995,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showGenreSelection();
     });
 });
-
 
 
 
