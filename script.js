@@ -555,7 +555,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Combinar top tracks con tracks de álbumes
-            const allTracks = [...topTracks, ...additionalTracks];
+            const allTracks = [...topTracks, ...additionalTracks].filter(track => {
+                // Filtrar tracks que no tengan las propiedades básicas necesarias
+                return track && track.name && track.uri && track.artists && track.artists.length > 0;
+            });
             
             if (allTracks.length === 0) {
                 throw new Error('No se encontraron canciones para este artista');
@@ -565,12 +568,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const virtualPlaylist = {
                 id: `artist_${artistId}`,
                 name: `Top Tracks - ${artistName}`,
-                tracks: allTracks.map(track => ({
-                    name: track.name,
-                    artist: track.artists.map(a => a.name).join(', '),
-                    uri: track.uri,
-                    album_art: track.album.images && track.album.images[0] ? track.album.images[0].url : ''
-                }))
+                tracks: allTracks.map(track => {
+                    try {
+                        // Validar que el track tenga las propiedades necesarias
+                        const albumArt = (track.album && track.album.images && track.album.images[0]) 
+                            ? track.album.images[0].url 
+                            : '';
+                        
+                        const artistName = (track.artists && track.artists.length > 0)
+                            ? track.artists.map(a => a.name).join(', ')
+                            : 'Artista desconocido';
+                        
+                        return {
+                            name: track.name || 'Canción sin nombre',
+                            artist: artistName,
+                            uri: track.uri || '',
+                            album_art: albumArt
+                        };
+                    } catch (error) {
+                        console.warn('Error procesando track:', track, error);
+                        // Retornar un track básico si hay error
+                        return {
+                            name: track.name || 'Canción sin nombre',
+                            artist: 'Artista desconocido',
+                            uri: track.uri || '',
+                            album_art: ''
+                        };
+                    }
+                }).filter(track => track.name && track.uri) // Filtrar tracks inválidos
             };
             
             // Simular la respuesta del API get-track
@@ -1115,9 +1140,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Seleccionar una canción aleatoria de las ya cargadas
                     const randomTrack = allTracks[Math.floor(Math.random() * allTracks.length)];
                     currentTrack = {
-                        name: randomTrack.name,
-                        artist: randomTrack.artist,
-                        uri: randomTrack.uri,
+                        name: randomTrack.name || 'Canción sin nombre',
+                        artist: randomTrack.artist || 'Artista desconocido',
+                        uri: randomTrack.uri || '',
                         album_art: randomTrack.album_art || ''
                     };
                     startGame();
