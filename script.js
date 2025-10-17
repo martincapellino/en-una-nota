@@ -582,11 +582,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         ? track.album.images[0].url 
                         : '';
                     
+                    // Usar el nombre del artista seleccionado como fallback
+                    const trackArtist = (track.artists && track.artists.length > 0) 
+                        ? track.artists.map(a => a.name).join(', ')
+                        : artistName; // Usar el nombre del artista seleccionado
+                    
+                    console.log(`🎵 Track: ${track.name} | Artist: ${trackArtist} | Album Art: ${albumArt ? '✅' : '❌'}`);
+                    
                     return {
                         name: track.name,
-                        artist: (track.artists && track.artists.length > 0) 
-                            ? track.artists.map(a => a.name).join(', ')
-                            : 'Artista desconocido',
+                        artist: trackArtist,
                         uri: track.uri,
                         album_art: albumArt
                     };
@@ -647,6 +652,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     album_art: t.album_art
                 }))
             };
+            
+            console.log('🎵 Mock response track:', mockResponse.track);
+            console.log('🖼️ Mock response album_art:', mockResponse.track.album_art);
             
             // Usar la misma lógica que handleGenreClick
             currentTrack = mockResponse.track;
