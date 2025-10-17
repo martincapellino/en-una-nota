@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Playlists de artistas (usar IDs válidos de playlists públicas de Spotify)
     const artists = {
-        "Duki": "37i9dQZF1DX4sWSpwq3LiO", // Top Tracks de Duki
+        "Duki": "0T4Ic0JnO2Skrjvg3xw6S1", // Top Tracks de Duki
         "Kanye West": "37i9dQZF1DZ06evO3nMr04" // Top Tracks de Kanye West
     };
 
@@ -961,6 +961,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showGenreSelection();
     });
 });
+
 
 
 
