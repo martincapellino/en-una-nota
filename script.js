@@ -555,12 +555,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Combinar top tracks con tracks de álbumes
-            const allTracks = [...topTracks, ...additionalTracks].filter(track => {
+            const artistTracks = [...topTracks, ...additionalTracks].filter(track => {
                 // Filtrar tracks que no tengan las propiedades básicas necesarias
                 return track && track.name && track.uri && track.artists && track.artists.length > 0;
             });
             
-            if (allTracks.length === 0) {
+            if (artistTracks.length === 0) {
                 throw new Error('No se encontraron canciones para este artista');
             }
             
@@ -568,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const virtualPlaylist = {
                 id: `artist_${artistId}`,
                 name: `Top Tracks - ${artistName}`,
-                tracks: allTracks.map(track => {
+                tracks: artistTracks.map(track => {
                     try {
                         // Validar que el track tenga las propiedades necesarias
                         const albumArt = (track.album && track.album.images && track.album.images[0]) 
