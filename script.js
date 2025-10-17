@@ -535,73 +535,110 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         
         try {
-            // Obtener top tracks del artista (máximo 50)
-            const topTracksResponse = await spotifyApi('GET', `/artists/${artistId}/top-tracks?market=ES`);
-            const topTracks = topTracksResponse.tracks || [];
+            // Primero intentar buscar la playlist "This Is [Artista]" de Spotify
+            console.log(`🔍 Buscando playlist "This Is ${artistName}"...`);
+            const thisIsSearchResponse = await spotifyApi('GET', `/search?q=This Is ${encodeURIComponent(artistName)}&type=playlist&limit=5`);
+            const thisIsPlaylists = thisIsSearchResponse.playlists?.items || [];
             
-            // Obtener TODOS los álbumes del artista
-            let allAlbums = [];
-            let offset = 0;
-            const limit = 50;
+            let artistTracks = [];
+            let foundThisIsPlaylist = false;
             
-            // Paginación para obtener todos los álbumes
-            while (true) {
-                const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=${limit}&offset=${offset}&include_groups=album,single`);
-                const albums = albumsResponse.items || [];
-                allAlbums = allAlbums.concat(albums);
-                
-                if (!albumsResponse.next || albums.length < limit) break;
-                offset += limit;
-            }
-            
-            console.log(`📀 Total de álbumes encontrados: ${allAlbums.length}`);
-            
-            // Obtener tracks de TODOS los álbumes
-            let additionalTracks = [];
-            
-            for (let i = 0; i < allAlbums.length; i++) {
-                try {
-                    // Obtener información completa del álbum (incluyendo imágenes)
-                    const albumInfoResponse = await spotifyApi('GET', `/albums/${allAlbums[i].id}?market=ES`);
+            // Buscar la playlist "This Is" oficial de Spotify
+            for (const playlist of thisIsPlaylists) {
+                if (playlist.name.toLowerCase().includes('this is') && 
+                    playlist.owner.display_name === 'Spotify' &&
+                    playlist.name.toLowerCase().includes(artistName.toLowerCase())) {
                     
-                    // Obtener TODOS los tracks del álbum con paginación
-                    let albumTracks = [];
-                    let trackOffset = 0;
-                    const trackLimit = 50;
+                    console.log(`✅ Encontrada playlist oficial: ${playlist.name}`);
+                    
+                    // Obtener todos los tracks de la playlist "This Is"
+                    let playlistTracks = [];
+                    let offset = 0;
+                    const limit = 50;
                     
                     while (true) {
-                        const albumTracksResponse = await spotifyApi('GET', `/albums/${allAlbums[i].id}/tracks?market=ES&limit=${trackLimit}&offset=${trackOffset}`);
-                        const tracks = albumTracksResponse.items || [];
-                        albumTracks = albumTracks.concat(tracks);
+                        const playlistTracksResponse = await spotifyApi('GET', `/playlists/${playlist.id}/tracks?market=ES&limit=${limit}&offset=${offset}`);
+                        const tracks = playlistTracksResponse.items || [];
+                        playlistTracks = playlistTracks.concat(tracks);
                         
-                        if (!albumTracksResponse.next || tracks.length < trackLimit) break;
-                        trackOffset += trackLimit;
+                        if (!playlistTracksResponse.next || tracks.length < limit) break;
+                        offset += limit;
                     }
                     
-                    // Agregar información del álbum a cada track
-                    const tracksWithAlbumInfo = albumTracks.map(track => ({
-                        ...track,
-                        album: {
-                            ...albumInfoResponse,
-                            images: albumInfoResponse.images || []
-                        }
-                    }));
+                    // Procesar tracks de la playlist
+                    artistTracks = playlistTracks.map(item => {
+                        const track = item.track;
+                        return {
+                            name: track.name || 'Canción sin nombre',
+                            artist: track.artists.map(a => a.name).join(', '),
+                            uri: track.uri || '',
+                            album_art: (track.album && track.album.images && track.album.images[0]) 
+                                ? track.album.images[0].url 
+                                : ''
+                        };
+                    }).filter(track => track.name && track.uri);
                     
-                    additionalTracks = additionalTracks.concat(tracksWithAlbumInfo);
-                    console.log(`📀 Álbum ${i+1}/${allAlbums.length}: ${allAlbums[i].name} - ${albumTracks.length} tracks (Total: ${additionalTracks.length})`);
-                    
-                } catch (error) {
-                    console.warn(`Error obteniendo tracks del álbum ${allAlbums[i].name}:`, error);
+                    foundThisIsPlaylist = true;
+                    console.log(`🎵 Playlist "This Is" cargada: ${artistTracks.length} canciones`);
+                    break;
                 }
             }
             
-            // Combinar top tracks con tracks de álbumes (SIN LÍMITE)
-            const artistTracks = [...topTracks, ...additionalTracks].filter(track => {
-                // Filtrar tracks que no tengan las propiedades básicas necesarias
-                return track && track.name && track.uri && track.artists && track.artists.length > 0;
-            });
-            
-            console.log(`🎵 Total tracks cargados: ${artistTracks.length} (${topTracks.length} top tracks + ${additionalTracks.length} de álbumes)`);
+            // Si no se encontró playlist "This Is", usar método anterior (top tracks + álbumes)
+            if (!foundThisIsPlaylist) {
+                console.log(`❌ No se encontró playlist "This Is", usando método alternativo...`);
+                
+                // Obtener top tracks del artista
+                const topTracksResponse = await spotifyApi('GET', `/artists/${artistId}/top-tracks?market=ES`);
+                const topTracks = topTracksResponse.tracks || [];
+                
+                // Obtener algunos álbumes para más variedad (método rápido)
+                const albumsResponse = await spotifyApi('GET', `/artists/${artistId}/albums?market=ES&limit=10&include_groups=album,single`);
+                const albums = albumsResponse.items || [];
+                
+                let additionalTracks = [];
+                
+                for (let i = 0; i < Math.min(5, albums.length); i++) {
+                    try {
+                        const albumInfoResponse = await spotifyApi('GET', `/albums/${albums[i].id}?market=ES`);
+                        const albumTracksResponse = await spotifyApi('GET', `/albums/${albums[i].id}/tracks?market=ES&limit=20`);
+                        const albumTracks = albumTracksResponse.items || [];
+                        
+                        const tracksWithAlbumInfo = albumTracks.map(track => ({
+                            ...track,
+                            album: {
+                                ...albumInfoResponse,
+                                images: albumInfoResponse.images || []
+                            }
+                        }));
+                        
+                        additionalTracks = additionalTracks.concat(tracksWithAlbumInfo);
+                        console.log(`📀 Álbum ${i+1}/5: ${albums[i].name} - ${albumTracks.length} tracks`);
+                    } catch (error) {
+                        console.warn(`Error obteniendo tracks del álbum ${albums[i].name}:`, error);
+                    }
+                }
+                
+                // Combinar top tracks con tracks de álbumes
+                const allTracksCombined = [...topTracks, ...additionalTracks].filter(track => {
+                    return track && track.name && track.uri && track.artists && track.artists.length > 0;
+                });
+                
+                artistTracks = allTracksCombined.map(track => {
+                    const albumArt = (track.album && track.album.images && track.album.images.length > 0) 
+                        ? track.album.images[0].url 
+                        : '';
+                    
+                    return {
+                        name: track.name || 'Canción sin nombre',
+                        artist: track.artists.map(a => a.name).join(', '),
+                        uri: track.uri || '',
+                        album_art: albumArt
+                    };
+                });
+                
+                console.log(`🎵 Método alternativo: ${artistTracks.length} canciones`);
+            }
             
             if (artistTracks.length === 0) {
                 throw new Error('No se encontraron canciones para este artista');
@@ -660,13 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log('🎵 Track seleccionado:', currentTrack);
             console.log('🖼️ Album art URL:', currentTrack.album_art);
-            
-            // Restaurar el texto original
-            document.getElementById('my-playlists-grid').innerHTML = `
-                <div style="text-align: center; margin: 40px 0;">
-                    <div style="font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
-                </div>
-            `;
             
             startGame();
             
