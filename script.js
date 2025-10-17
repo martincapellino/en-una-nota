@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div id="artist-suggestions" class="suggestions-container"></div>
                 </div>
             <div id="my-playlists-grid">
-                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
+                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700; display: flex; align-items: center; justify-content: center; min-height: 200px;">Elige un artista para jugar</div>
             </div>
             `;
 
@@ -620,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentGenre = { playlistId: virtualPlaylist.id, playlistName: virtualPlaylist.name };
             
             console.log('🎵 Track seleccionado:', currentTrack);
+            console.log('🖼️ Album art URL:', currentTrack.album_art);
             
             startGame();
             
@@ -629,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Volver a la búsqueda
             document.getElementById('my-playlists-grid').innerHTML = `
-                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700;">Elige un artista para jugar</div>
+                <div class="loading-text" style="text-align: center; font-size: 1.2rem; color: #1DB954; font-weight: 700; display: flex; align-items: center; justify-content: center; min-height: 200px;">Elige un artista para jugar</div>
             `;
         }
     }
@@ -805,7 +806,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <button class="back-arrow-button" id="back-from-game-button">← Volver</button>
             <div class="album-art-container">
-                <img id="albumArt" src="${currentTrack.album_art}" alt="Tapa del álbum borrosa" style="${hideAlbumArt ? 'display: none;' : ''}">
+                ${currentTrack.album_art ? 
+                    `<img id="albumArt" src="${currentTrack.album_art}" alt="Tapa del álbum borrosa" style="${hideAlbumArt ? 'display: none;' : ''}">` :
+                    `<div id="albumArt" style="width: 280px; height: 280px; background: #2a2a2a; border: 2px solid #3a3a3a; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999999; font-size: 1.2rem; text-align: center; ${hideAlbumArt ? 'display: none;' : ''}">Sin imagen</div>`
+                }
             </div>
             <div class="hide-cover-toggle">
                 <label class="toggle-label">
