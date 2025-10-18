@@ -196,11 +196,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!spotifyUser) { if (existing) existing.remove(); return; }
         const html = `
             <div id="user-badge">
-                ${spotifyUser.image ? `<img src="${spotifyUser.image}" alt="pfp" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">` : ''}
-                <span style="font-weight:700;">Hola, ${spotifyUser.name}</span>
+                <div>
+                    ${spotifyUser.image ? `<img src="${spotifyUser.image}" alt="pfp" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">` : ''}
+                    <span style="font-weight:700;">Hola, ${spotifyUser.name}</span>
+                </div>
+                <button class="logout-button-small" id="logout-button-small">Cerrar sesión</button>
             </div>
         `;
         if (existing) existing.outerHTML = html; else document.body.insertAdjacentHTML('afterbegin', html);
+        
+        // Agregar event listener al botón de cerrar sesión
+        const logoutBtn = document.getElementById('logout-button-small');
+        if (logoutBtn) {
+            logoutBtn.onclick = async () => {
+                try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
+                localStorage.removeItem('spotify_refresh_token');
+                // resetear SDK/estado
+                try { if (spotifyPlayer) { await spotifyPlayer.disconnect(); } } catch (_) {}
+                spotifyPlayer = null; spotifyDeviceId = null; isSpotifyConnected = false; spotifyUser = null; renderUserBadge();
+                initializeMenu();
+            };
+        }
     }
 
     async function playSpotifyClip(uri, ms) {
@@ -298,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="mode-button" id="my-playlists-button">MIS PLAYLISTS</button>
                 <button class="mode-button" id="genres-button-dynamic">GÉNEROS MUSICALES</button>
                 <button class="mode-button" id="artists-button-dynamic">ARTISTAS</button>
-                <button class="logout-button" id="logout-button">Cerrar sesión</button>
                 ` : ''}
             </div>
         `;
@@ -328,15 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showMyPlaylists();
             };
         }
-        const logoutBtn = document.getElementById('logout-button');
-        if (logoutBtn) logoutBtn.onclick = async () => {
-            try { await fetch('/api/logout', { method: 'POST' }); } catch (_) {}
-            localStorage.removeItem('spotify_refresh_token');
-            // resetear SDK/estado
-            try { if (spotifyPlayer) { await spotifyPlayer.disconnect(); } } catch (_) {}
-            spotifyPlayer = null; spotifyDeviceId = null; isSpotifyConnected = false; spotifyUser = null; renderUserBadge();
-            initializeMenu();
-        };
         showScreen(menuContainer);
     }
 
