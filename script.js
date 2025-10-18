@@ -2,8 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---- TUS PLAYLISTS DE SPOTIFY ----
     // Aquí están tus playlists configuradas
     const genres = {
-        "Desafio Kochi: Quevedo": "1IaFDLfOGmJx9LH77iuMDt",
-        "Facil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8"
+        "Trap Argentino: GOLDEN ERA": "2FIHq8uBobzPe17QGZTw56",
+        "Fácil de Reconocer": "1koyIdOfW4lxtr46r7Dwa8",
+        "Rock Nacional🧉": "1GBwfEyXm5HCpy3DCmKO6n",
+        "Top 50 Argentina🇦🇷": "37i9dQZEVXbMMy2roB9myp"
     };
 
     // Playlists de artistas (usar IDs válidos de playlists públicas de Spotify)
