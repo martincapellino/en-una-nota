@@ -576,39 +576,42 @@ button:active {
     top: 15px;
     left: 15px;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
     background: #2a2a2a;
-    padding: 10px 12px;
+    padding: 8px 12px;
     border-radius: 8px;
     border: 1px solid #1DB954;
     z-index: 10000;
-    min-width: 200px;
-}
-
-#user-badge > div:first-child {
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .logout-button-small {
+    position: fixed;
+    top: 60px;
+    left: 15px;
     background: transparent;
     border: 1px solid #F44336;
     color: #F44336;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    letter-spacing: 0.3px;
+    padding: 6px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
-    align-self: flex-start;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
 }
 
 .logout-button-small:hover {
     background: #F44336;
     color: #0a0a0a;
     border-color: #F44336;
+    transform: translateY(-1px);
+}
+
+.logout-button-small svg {
+    width: 16px;
+    height: 16px;
 }
