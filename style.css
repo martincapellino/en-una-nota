@@ -577,31 +577,34 @@ button:active {
     left: 15px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     background: #2a2a2a;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 8px;
     border: 1px solid #1DB954;
     z-index: 10000;
 }
 
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .logout-button-small {
-    position: fixed;
-    top: 60px;
-    left: 15px;
     background: transparent;
     border: 1px solid #F44336;
     color: #F44336;
-    padding: 6px;
+    padding: 8px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
-    z-index: 10000;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
 }
 
 .logout-button-small:hover {
@@ -612,6 +615,6 @@ button:active {
 }
 
 .logout-button-small svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
 }
