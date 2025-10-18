@@ -193,17 +193,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderUserBadge() {
         const existing = document.getElementById('user-badge');
-        if (!spotifyUser) { if (existing) existing.remove(); return; }
-        const html = `
+        const existingLogout = document.getElementById('logout-button-small');
+        
+        if (!spotifyUser) { 
+            if (existing) existing.remove(); 
+            if (existingLogout) existingLogout.remove(); 
+            return; 
+        }
+        
+        const userBadgeHtml = `
             <div id="user-badge">
-                <div>
-                    ${spotifyUser.image ? `<img src="${spotifyUser.image}" alt="pfp" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">` : ''}
-                    <span style="font-weight:700;">Hola, ${spotifyUser.name}</span>
-                </div>
-                <button class="logout-button-small" id="logout-button-small">Cerrar sesión</button>
+                ${spotifyUser.image ? `<img src="${spotifyUser.image}" alt="pfp" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">` : ''}
+                <span style="font-weight:700;">Hola, ${spotifyUser.name}</span>
             </div>
         `;
-        if (existing) existing.outerHTML = html; else document.body.insertAdjacentHTML('afterbegin', html);
+        
+        const logoutButtonHtml = `
+            <button class="logout-button-small" id="logout-button-small" title="Cerrar sesión">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17 7L15.59 8.41L18.17 11H8V13H18.17L15.59 15.59L17 17L22 12L17 7Z" fill="currentColor"/>
+                    <path d="M4 5H12V3H4C2.9 3 2 3.9 2 5V19C2 20.1 2.9 21 4 21H12V19H4V5Z" fill="currentColor"/>
+                </svg>
+            </button>
+        `;
+        
+        if (existing) existing.outerHTML = userBadgeHtml; else document.body.insertAdjacentHTML('afterbegin', userBadgeHtml);
+        if (existingLogout) existingLogout.outerHTML = logoutButtonHtml; else document.body.insertAdjacentHTML('afterbegin', logoutButtonHtml);
         
         // Agregar event listener al botón de cerrar sesión
         const logoutBtn = document.getElementById('logout-button-small');
